@@ -3,7 +3,7 @@
 <!-- Without this a phone renders at ~980px and zooms out to fit, so the whole
      table lands at about a third scale and needs pinching to read. -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>yejuniverse</title>
+<title>yejuniverse VODs</title>
 <style>
   /* Light is the base and dark is the override, so a browser that does not
      understand prefers-color-scheme still renders something readable rather
@@ -28,9 +28,8 @@
   body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5
        "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px}
-  h1{margin:0;font-size:23px;font-weight:650;letter-spacing:-.01em}
-  .sub{color:var(--dim);font-size:13.5px;margin:5px 0 20px}
-  .sub a{color:var(--accent);text-decoration:none}
+  /* Carries the gap the removed .sub paragraph used to provide. */
+  h1{margin:0 0 16px;font-size:23px;font-weight:650;letter-spacing:-.01em}
   .bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;
        flex-wrap:wrap}
   input[type=search]{flex:1;min-width:220px;background:var(--chip);
@@ -88,6 +87,35 @@
   .more .at{color:var(--dim)}
   .empty{color:var(--dim);padding:26px 8px}
   #sortby{display:none}
+  /* Play Option: which venue a tapped song opens in. Its own block rather than
+     another control in the filter bar, because it changes what every row DOES
+     and that deserves to be stated, not tucked away. */
+  #playopt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+           background:var(--chip);border:1px solid var(--line);
+           border-radius:10px;padding:10px 12px;margin:0 0 14px}
+  #playopt[hidden]{display:none}
+  #playopt .lbl{font-size:11.5px;font-weight:600;color:var(--head);
+                text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  #playopt .opts{display:flex;border:1px solid var(--line);border-radius:8px;
+                 overflow:hidden}
+  #playopt .opt{background:none;border:none;color:var(--dim);font:inherit;
+                font-size:13px;padding:8px 13px;cursor:pointer;min-height:38px;
+                white-space:nowrap}
+  #playopt .opt+.opt{border-left:1px solid var(--line)}
+  #playopt .opt:hover{color:var(--ink)}
+  /* Selected paints accent-on-page-background, NOT white: --accent is a dark
+     blue in light mode and a pale blue in dark mode, so white text is unreadable
+     in one of them. --bg inverts with the theme and stays legible in both. */
+  #playopt .opt[aria-checked="true"]{background:var(--accent);color:var(--bg);
+                                     font-weight:600}
+  #playopt .hint{font-size:12px;color:var(--dim);flex:1;min-width:170px;
+                 line-height:1.4}
+  #player{margin:0 0 14px}
+  #player[hidden]{display:none}
+  #player iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;
+                 display:block;background:#000}
+  #player .ph{margin:0;padding:22px 14px;text-align:center;color:var(--dim);
+              font-size:13px;border:1px dashed var(--line);border-radius:10px}
   /* Fixed to the bottom of the viewport rather than placed in the flow: it is
      revealed while the phone is away in the YouTube app, so it has to be
      visible on return whatever the scroll position was. Sticky would fight the
@@ -118,8 +146,7 @@
      code. */
   @media (max-width: 620px){
     .wrap{padding:18px 13px 44px}
-    h1{font-size:20px}
-    .sub{font-size:12.5px}
+    h1{font-size:20px;margin:0 0 12px}
     #sortby{display:block;background:var(--chip);border:1px solid var(--line);
             color:var(--ink);border-radius:8px;padding:9px 10px;font:inherit;
             font-size:13px}
@@ -160,15 +187,19 @@
                  text-align:center;color:var(--dim);font-size:13px}
     .more td{padding:2px 0 10px}
     .more ol{columns:1;padding-left:18px}
+    #playopt{gap:8px;padding:9px 10px}
+    #playopt .hint{flex:1 1 100%;min-width:0}
+    /* Sticky only here. A phone has to scroll a long way to the next song, and
+       an in-flow player would be off screen by the time you tapped one. It can
+       be sticky at top:0 without a fight because thead is display:none on this
+       breakpoint -- on desktop the sticky table header already owns that slot,
+       so there the player stays in the flow. */
+    #player:not([hidden]){position:sticky;top:0;z-index:6;
+                          background:var(--bg);padding:6px 0;margin:0 0 10px}
   }
 </style>
 <div class="wrap">
-  <h1>yejuniverse</h1>
-  <p class="sub">318 songs across 22 streams &middot;
-     generated 2026-08-17<br>
-     Titles with no artist listed are extras.<br>
-     Click a row to open it on YouTube; click a count to list every
-     performance.</p>
+  <h1>yejuniverse VODs</h1>
   <div id="oops"></div>
   <div class="bar">
     <input type="search" id="q" placeholder="Filter by song, artist or stream"
@@ -186,6 +217,21 @@
     </select>
     <button id="theme" type="button"></button>
   </div>
+  <!-- Hidden in the markup and revealed by the script. With no JavaScript the
+       choice cannot be honoured at all -- rows are plain anchors and always
+       open YouTube -- so a dead control would be worse than no control. -->
+  <div id="playopt" hidden>
+    <span class="lbl">Play Option</span>
+    <div class="opts" role="radiogroup" aria-label="Play Option">
+      <button type="button" class="opt" data-play="yt" role="radio"
+              aria-checked="true">Open in YouTube</button>
+      <button type="button" class="opt" data-play="here" role="radio"
+              aria-checked="false">Play here</button>
+    </div>
+    <span class="hint" id="playhint"></span>
+  </div>
+  <div id="player" hidden><p class="ph" id="playerph">Pick a song below and it
+    plays here.</p></div>
   <table>
     <thead><tr>
       <th data-sort="artist">Artist<span class="ar"></span></th>
@@ -354,6 +400,104 @@ guard("table", function(){
   apply();
 });
 
+// Play Option: where a tapped song opens. "Open in YouTube" is the default and
+// is exactly the behaviour that shipped before this existed -- the row is a
+// plain anchor and nothing interferes with it. "Play here" reveals a player and
+// makes rows load into it instead, which is the only way to jump between songs
+// in a stream the YouTube app already has open (measured: no URL form does it).
+//
+// The two costs of "play here" are real and are why it is not the default:
+// audio stops when you leave the page, and the page starts fetching from
+// YouTube. The iframe is therefore created on FIRST USE, so a page left on the
+// default still fetches nothing at all.
+guard("playopt", function(){
+  var wrap = document.getElementById("playopt");
+  var pane = document.getElementById("player");
+  var ph = document.getElementById("playerph");
+  var hint = document.getElementById("playhint");
+  var root = document.documentElement;
+  if (!wrap || !pane) return;
+  var KEY = "songlist-play", frame = null, mode = "yt";
+  try{ if (localStorage.getItem(KEY) === "here") mode = "here"; }catch(e){}
+
+  // String slicing, not a regex: every backslash in this template is Python's
+  // before it is the browser's, and that has already shipped one bug here.
+  function vidOf(href){
+    var i = href.indexOf("youtu.be/");
+    if (i < 0) return "";
+    var rest = href.slice(i + 9), q = rest.indexOf("?");
+    return q < 0 ? rest : rest.slice(0, q);
+  }
+  function secsOf(href){
+    var i = href.indexOf("?t=");
+    return i < 0 ? 0 : (parseInt(href.slice(i + 3), 10) || 0);
+  }
+  function play(v, t){
+    if (!frame){
+      frame = document.createElement("iframe");
+      frame.setAttribute("allow", "accelerometer; autoplay; encrypted-media; " +
+                                  "gyroscope; picture-in-picture; web-share");
+      frame.setAttribute("allowfullscreen", "");
+      frame.setAttribute("title", "Player");
+      pane.appendChild(frame);
+    }
+    if (ph) ph.style.display = "none";
+    frame.src = "https://www.youtube.com/embed/" + v + "?start=" + t +
+                "&autoplay=1&playsinline=1&rel=0";
+    pane.hidden = false;
+  }
+  function paint(){
+    [].forEach.call(wrap.querySelectorAll(".opt"), function(b){
+      b.setAttribute("aria-checked", b.dataset.play === mode ? "true" : "false");
+    });
+    // Says what the choice COSTS, not just what it does. Both directions of
+    // this trade were measured on the phone and neither is free.
+    hint.textContent = mode === "here"
+      ? "Songs play on this page, so jumping within one stream works. Audio stops if you leave."
+      : "Songs open in the YouTube app. Background audio keeps working, but it will not jump within a stream it already has open.";
+    // Read by the same-stream notice, which must not fire when no app is
+    // involved. A data attribute rather than a shared variable keeps the two
+    // guard() blocks independent -- one throwing still cannot take the other.
+    root.setAttribute("data-play", mode);
+    if (mode === "here"){
+      pane.hidden = false;
+      var n = document.getElementById("samevod");
+      if (n) n.hidden = true;
+    } else {
+      pane.hidden = true;
+      // Stop playback on collapse. Leaving the src alone keeps the audio going
+      // from a hidden element, which is indistinguishable from the page being
+      // haunted.
+      if (frame){ frame.src = "about:blank"; if (ph) ph.style.display = ""; }
+    }
+  }
+  wrap.addEventListener("click", function(ev){
+    var b = ev.target.closest && ev.target.closest(".opt");
+    if (!b) return;
+    mode = (b.dataset.play === "here") ? "here" : "yt";
+    try{ localStorage.setItem(KEY, mode); }catch(e){}
+    paint();
+  });
+  // Only intercepts in "play here" mode. In the default mode this listener does
+  // nothing whatsoever, so the anchor behaves exactly as it always has -- no
+  // popup blocking, no swallowed taps. The href is never rewritten either, so a
+  // long-press still offers "Open in YouTube" in both modes.
+  document.addEventListener("click", function(ev){
+    if (mode !== "here") return;
+    var a = ev.target.closest && ev.target.closest("a[href]");
+    if (!a) return;
+    var href = a.getAttribute("href") || "", v = vidOf(href);
+    if (!v) return;
+    ev.preventDefault();
+    play(v, secsOf(href));
+    // "nearest" is a no-op when the player is already on screen, which it
+    // always is on a phone, where it is sticky.
+    pane.scrollIntoView({block: "nearest"});
+  });
+  wrap.hidden = false;
+  paint();
+});
+
 // The YouTube app ignores a timestamp for a video it already has open, and no
 // URL form changes that -- six were measured on the device and all six behaved
 // identically. So this does not try to FIX the link, it explains the failure.
@@ -371,6 +515,12 @@ guard("samevod", function(){
         matchMedia("(hover: none) and (pointer: coarse)").matches)) return;
   var box = document.getElementById("samevod");
   if (!box) return;
+  // Nothing to explain when the song plays on this page: no app is involved and
+  // seeking works. Read live rather than captured, since the mode can change
+  // after this block has run.
+  function appMode(){
+    return document.documentElement.getAttribute("data-play") !== "here";
+  }
   var KEY = "songlist-last-vod";
   // sessionStorage, not localStorage: "might still be playing" is a guess that
   // expires with the session. Next week it would mean nothing and the notice
@@ -396,6 +546,7 @@ guard("samevod", function(){
   // Tapping two dates of the same song is the case that WORKS -- different
   // videos -- and keying on the video id gets that right with no special case.
   document.addEventListener("click", function(ev){
+    if (!appMode()) return;
     var a = ev.target.closest && ev.target.closest("a[href]");
     if (!a) return;
     var v = vidOf(a.getAttribute("href") || "");
