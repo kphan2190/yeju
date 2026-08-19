@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dummy-hop test</title>
+<style>
+ :root{color-scheme:light dark}
+ body{font:15px/1.55 system-ui,-apple-system,sans-serif;margin:0;
+      padding:18px 14px 60px;max-width:640px}
+ h1{font-size:19px;margin:0 0 6px}
+ .step{background:rgba(127,127,127,.13);border-radius:8px;padding:11px 14px;
+       margin:0 0 16px;font-size:14px}
+ ol{padding-left:22px} li{margin:0 0 16px;font-size:15px}
+ .d{display:block;font-size:12px;opacity:.65;margin-top:2px}
+ a{color:#1a56c4}
+ @media (prefers-color-scheme:dark){a{color:#8ab4f8}}
+</style>
+<h1>Does loading something else first make YouTube seek?</h1>
+<p>VOD: <b>26/07/06 yejuniverse VOD</b></p>
+<div class="step"><b>Step 1.</b> Open the VOD at <b>0:10:26</b> and let it play,
+  then come back here.<br>
+  <a href="https://youtu.be/5vsDCQLcAgw?t=626" target="_blank"
+     rel="noreferrer">open at 0:10:26</a></div>
+<div class="step"><b>Step 2.</b> Tap a variant. It opens the dummy first.
+  <b>Swipe back to Safari</b> and it will then send you to <b>4:33:10</b>.
+  Note whether the player actually moves.</div>
+<ol><li><a href="hop2.html?d=https://www.youtube.com/@yejuniverse/videos&u=https://youtu.be/5vsDCQLcAgw?t=16390" target="_blank" rel="noreferrer">channel /videos page</a><span class="d">No audio. Least disruptive if it works.</span></li><li><a href="hop2.html?d=https://www.youtube.com/@yejuniverse&u=https://youtu.be/5vsDCQLcAgw?t=16390" target="_blank" rel="noreferrer">channel home</a><span class="d">Same idea, different landing spot.</span></li><li><a href="hop2.html?d=https://www.youtube.com/&u=https://youtu.be/5vsDCQLcAgw?t=16390" target="_blank" rel="noreferrer">YouTube home</a><span class="d">Furthest from the video, still no audio.</span></li><li><a href="hop2.html?d=https://youtu.be/ZRx7PqdWnlo&u=https://youtu.be/5vsDCQLcAgw?t=16390" target="_blank" rel="noreferrer">a different VIDEO</a><span class="d">Strongest state change, but her cover starts playing first.</span></li></ol>
+<div class="step"><b>Why this might fail:</b> the app keeps a minimised player
+  when you go to a channel page, so the VOD may still count as "open" and the
+  timestamp gets ignored exactly as before. If the channel variants fail but
+  <b>a different VIDEO</b> works, that tells us the state only clears when
+  another video actually loads &mdash; useful to know, even though it is a
+  worse experience.</div>
