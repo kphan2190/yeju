@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening...</title>
+<style>body{font:16px/1.5 system-ui;margin:0;padding:40px 20px;text-align:center}
+a{display:inline-block;margin-top:18px;font-size:18px}</style>
+<h2 id="h">Opening YouTube...</h2>
+<p id="p">If nothing happens, tap below.</p>
+<a id="go" href="#">Open the video</a>
+<script>
+var q = new URLSearchParams(location.search);
+var url = q.get("u") || "";
+var how = q.get("how") || "href";
+document.getElementById("go").href = url;
+document.getElementById("h").textContent = "Hop page (" + how + ")";
+function jump(){
+  if (how === "href")    location.href = url;
+  else if (how === "replace") location.replace(url);
+  else if (how === "assign")  location.assign(url);
+  else if (how === "open")    window.open(url, "_self");
+  else if (how === "click"){
+    var a = document.createElement("a");
+    a.href = url; a.rel = "noreferrer";
+    document.body.appendChild(a); a.click();
+  }
+}
+if (how === "meta"){
+  var m = document.createElement("meta");
+  m.httpEquiv = "refresh"; m.content = "0;url=" + url;
+  document.head.appendChild(m);
+} else if (how !== "manual"){
+  setTimeout(jump, 120);
+}
+</script>
