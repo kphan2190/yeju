@@ -338,33 +338,45 @@
      Fixed #000 in BOTH themes on purpose: a "blackout" that respects a light
      palette is not one. touch-action:none so a stray swipe cannot scroll the
      page underneath. */
+  /* align-items:flex-end, not center: on a phone the whole point is that this
+     is operated one-handed without looking, so the controls belong in the
+     lower third where a thumb reaches, not in the middle of the screen. The
+     safe-area inset keeps them clear of the home indicator. */
   #blackout{position:fixed;inset:0;z-index:50;background:#000;
-            display:flex;align-items:center;justify-content:center;
+            display:flex;align-items:flex-end;justify-content:center;
+            padding-bottom:calc(18px + env(safe-area-inset-bottom));
             touch-action:none;-webkit-tap-highlight-color:transparent}
   #blackout[hidden]{display:none}
   /* Invisible AND click-through when idle, so the first touch anywhere reaches
      the overlay and wakes the panel rather than hitting a control blind. */
   #bopanel{opacity:0;pointer-events:none;transition:opacity .2s ease-out;
-           text-align:center;color:#e9e9e6;padding:24px;width:100%;
-           max-width:340px}
+           text-align:center;color:#e9e9e6;padding:20px;width:100%;
+           max-width:560px}
   #blackout.awake #bopanel{opacity:1;pointer-events:auto}
   @media (prefers-reduced-motion: reduce){#bopanel{transition:none}}
-  #bopanel .bs{font-size:17px;font-weight:650;line-height:1.3;
-               display:-webkit-box;-webkit-line-clamp:2;
+  /* Big enough to read at arm's length across the whole width -- this is the
+     one surface designed to be glanced at rather than used. Height is FIXED at
+     two lines for the same reason the shuffle block is: the transport sits
+     underneath and gets tapped, so a title growing from one line to two must
+     not move it. */
+  #bopanel .bs{font-size:25px;font-weight:650;line-height:1.25;
+               height:2.5em;display:-webkit-box;-webkit-line-clamp:2;
                -webkit-box-orient:vertical;overflow:hidden}
-  #bopanel .ba{font-size:13.5px;color:#9a9a95;margin-top:3px;
+  #bopanel .ba{font-size:15px;color:#9a9a95;margin-top:4px;
                white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #bonote{font-size:12px;color:#f7b32b;margin-top:10px;line-height:1.4}
-  #botr{display:flex;gap:14px;align-items:center;justify-content:center;
-        margin:18px 0 0}
-  #botr button{background:#141416;border:1px solid #3a3a40;color:#e9e9e6;
-        border-radius:50%;cursor:pointer;padding:0;width:52px;height:52px;
+  /* One bar across the width, each control an equal third. Three circles look
+     tidy and are the harder thing to hit blind; a third of the screen is not. */
+  #botr{display:flex;gap:0;align-items:stretch;margin:18px 0 0;
+        border:1px solid #3a3a40;border-radius:14px;overflow:hidden;
+        background:#141416}
+  #botr button{flex:1;background:none;border:none;color:#e9e9e6;cursor:pointer;
+        padding:0;height:64px;
         display:flex;align-items:center;justify-content:center}
   #botr button:disabled{opacity:.3}
-  #botr svg{width:22px;height:22px;fill:currentColor;display:block}
-  #botr button#boplay{width:64px;height:64px;background:#e9e9e6;color:#000;
-        border-color:#e9e9e6}
-  #botr button#boplay svg{width:27px;height:27px}
+  #botr svg{width:24px;height:24px;fill:currentColor;display:block}
+  #botr button#boplay{background:#e9e9e6;color:#000}
+  #botr button#boplay svg{width:28px;height:28px}
   /* Deliberately the only way out. A single tap anywhere would be found by a
      pocket in seconds, so waking the panel and leaving it are two separate
      actions. */
@@ -455,10 +467,18 @@
        so --barh is measured but nothing consumes it -- the bar is the last
        pinned strip on a phone. */
     #player:not([hidden]){padding:6px 0;margin:0 0 10px}
-    /* Round icon buttons are far narrower than the labelled ones they replaced,
-       so the row no longer has to fight for width: 48+60+48 plus gaps is 180 of
-       349, leaving the repeat toggle its own space at the right edge. */
-    #shtr{gap:12px}
+    /* A segmented bar rather than three circles. At 349px each control becomes
+       a full third -- a far easier target to hit without looking than a 48px
+       circle, and what a phone transport normally looks like. The accent middle
+       third separates the three without needing dividers. */
+    #shtr{gap:0;min-height:0;border:1px solid var(--line);border-radius:12px;
+          overflow:hidden;background:var(--chip)}
+    #shtr button{flex:1;width:auto;height:58px;border-radius:0;border:none;
+          background:none}
+    #shtr button#shplay{width:auto;height:58px;border-radius:0;border:none;
+          background:var(--accent);color:var(--bg)}
+    #shtr svg{width:24px;height:24px}
+    #shtr button#shplay svg{width:28px;height:28px}
     #shtr button#shrepeat{right:0}
     #shnow{height:88px}
     #shnow .s{font-size:16px}
@@ -473,17 +493,30 @@
     #shauto{position:relative;display:flex;flex-wrap:wrap;
             justify-content:center;gap:8px}
     #shauto .aside{display:contents}
-    #shauto .step{order:1}
+    /* Order on a phone reads: transport, then what the timer is doing, then the
+       control that sets it. The status line sits directly under the play
+       controls it describes rather than below the dial. */
+    #shauto .albl{order:1}
+    #shleft{order:2}
     /* An explicit line break. Ordering alone was not enough: stepper + label +
        countdown measure 337px inside a 349px row, so they all FIT on one line
        and the label simply moved sideways, shoving the stepper 83px off the
        play button -- worse than the 19px it was meant to fix. A zero-height
        flex-basis:100% pseudo-element between order 1 and order 3 forces the
        wrap regardless of how much room is left. */
-    #shauto::after{content:"";order:2;flex-basis:100%;height:0;margin:-4px 0}
-    #shauto .albl{order:3}
-    #shleft{order:4;min-width:0}
-    #shrepeat{order:5;position:absolute;right:0;top:0}
+    #shauto::after{content:"";order:3;flex-basis:100%;height:0;margin:-4px 0}
+    #shauto .step{order:4}
+    #shleft{min-width:0}
+    /* bottom, not top: the stepper is the LAST line now, and these two flank it
+       there. Anchored to top they would have lined up with the status text. */
+    #shrepeat{order:5;position:absolute;right:0;bottom:0}
+    /* Opposite repeat, in the slot that was empty. Out of flow like it, so the
+       stepper stays centred on the play button and the row gains no height --
+       which is the whole reason it moved here rather than anywhere with room. */
+    #boopen{order:6;position:absolute;left:0;bottom:0}
+    /* Centred under the search box. It sat left-aligned on its own line, which
+       is what read as awkward; on a desktop it stays inline to the right. */
+    #shcount{flex:1 1 100%;text-align:center}
     #shq{flex:1 1 100%}
   }
 </style>
@@ -552,6 +585,7 @@
         <span class="val" id="shadvval">Off</span>
         <button type="button" id="shadvup" aria-label="More">+</button>
       </span>
+      <button type="button" id="boopen" hidden>Blackout</button>
       <span class="aside">
         <button type="button" id="shrepeat" aria-pressed="false"
           aria-label="Repeat this performance"><svg viewBox="0 0 24 24"
@@ -565,7 +599,6 @@
       <input type="search" id="shq" placeholder="Filter by song, artist or stream"
              autocomplete="off">
       <span class="count" id="shcount"></span>
-      <button type="button" id="boopen" hidden>Blackout</button>
     </div>
     <div id="shend">
       <p>You&rsquo;ve reached the end.</p>
@@ -1183,9 +1216,10 @@ guard("playopt", function(){
   function shAtEnd(){ return shPos >= 0 && shPos + 1 >= shOrder.length; }
   function shPaintNav(){
     var pv = shBy("shprev");
-    // There is nothing behind the first entry, so the button says so rather
-    // than looking live and doing nothing. Next disables itself in shShowEnd.
-    if (pv) pv.disabled = (shPos <= 0);
+    // Enabled at the first entry too, now that Prev restarts rather than only
+    // stepping back -- there it always has something to do. Only a shuffle with
+    // nothing loaded leaves it dead. Next still disables itself in shShowEnd.
+    if (pv) pv.disabled = (shPos < 0);
   }
   function shPaintAuto(){
     var val = shBy("shadvval"), dn = shBy("shadvdn"), up = shBy("shadvup");
@@ -1276,13 +1310,31 @@ guard("playopt", function(){
     shPaintNav();
     shPaintPlay();
   }
+  // Both report whether they actually MOVED to another performance, which is
+  // what decides whether repeat retires -- restarting the current one is not
+  // moving on from it.
   function shNext(){
-    if (!shOrder.length) return;
-    if (shPos + 1 >= shOrder.length){ shShowEnd(true); shPaintAuto(); return; }
+    if (!shOrder.length) return false;
+    if (shPos + 1 >= shOrder.length){ shShowEnd(true); shPaintAuto(); return false; }
     shShowEnd(false);
     shLoad(shPos + 1);
+    return true;
   }
-  function shPrev(){ if (shPos > 0){ shShowEnd(false); shLoad(shPos - 1); } }
+  // Seconds into a performance after which Prev restarts it instead of stepping
+  // back -- the ordinary transport behaviour. A time threshold rather than
+  // counting consecutive presses, because it gives the same result and is right
+  // in a case tap-counting gets wrong: pressing Prev two seconds into a song you
+  // did not want should go BACK, not restart it. The second press works because
+  // the first one left the playhead at the start.
+  var PREV_RESTART = 3;
+  function shPrev(){
+    if (shPos < 0) return false;
+    // At the first entry there is nowhere back to go, so Prev always restarts.
+    if (shPos === 0 || shPlayed() > PREV_RESTART){ shReplay(); return false; }
+    shShowEnd(false);
+    shLoad(shPos - 1);
+    return true;
+  }
   // Back to this performance's own start. play() sees the same video id and
   // seeks rather than reloading, so a repeat costs no fresh load and rolls no
   // fresh ad -- the same reason same-stream taps are the reliable path.
@@ -1357,8 +1409,31 @@ guard("playopt", function(){
     var el = shBy(id);
     if (el) el.addEventListener("click", fn);
   }
-  shBind("shprev", shPrev);
-  shBind("shnext", shNext);
+  // Pressing Prev or Next is a decision to move ON from this performance, which
+  // is the opposite of what repeat asks for -- so repeat retires rather than
+  // carrying over and looping whatever lands next, which nobody asked it to do.
+  //
+  // Deliberately wrapped around the BUTTONS and not inside shNext(): the timer
+  // and the ENDED handler both reach shNext too, and clearing it there would
+  // mean repeat switched itself off the moment it was supposed to act. It can
+  // only be reached by a real press anyway -- with repeat on, shAdvance() routes
+  // to shReplay() instead -- but binding it here makes that independent of how
+  // shAdvance is written later. Reshuffle also calls shNext and keeps repeat,
+  // which is right: starting a fresh run is not moving on from a song.
+  function shManual(fn){
+    return function(){
+      // Only a real move retires repeat. Prev restarting the current
+      // performance must NOT, or repeat would be cancelled by the very gesture
+      // people use to hear something again.
+      if (fn() && shRepeat){
+        shRepeat = false;
+        try{ sessionStorage.setItem("songlist-repeat", "0"); }catch(e){}
+      }
+      shPaintAuto();
+    };
+  }
+  shBind("shprev", shManual(shPrev));
+  shBind("shnext", shManual(shNext));
   shBind("shplay", function(){
     if (api === "failed") return;
     try{
