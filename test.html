@@ -284,15 +284,21 @@
   #shtr button#shplay svg{width:26px;height:26px}
   #shtr button#shplay:hover:not(:disabled){opacity:.88;color:var(--bg);
         border-color:var(--accent)}
-  /* Repeat is a STATE, not an action, so it sits apart from the three
-     transport buttons and shows whether it is on rather than merely being
-     pressable. Absolutely positioned so the three stay dead centre. */
-  #shtr button#shrepeat{position:absolute;right:4px;top:50%;
-        transform:translateY(-50%);width:44px;height:44px;color:var(--dim)}
-  #shtr button#shrepeat[aria-pressed="true"]{color:var(--accent);
-        border-color:var(--accent);background:var(--bg)}
-  #shauto{display:flex;gap:10px;align-items:center;justify-content:center;
-          flex-wrap:wrap;margin:0 0 14px;font-size:13px;color:var(--dim)}
+  /* Repeat is a STATE rather than an action, and it modifies the auto-advance
+     timer rather than the transport, so it lives in that row -- see #shauto. */
+  #shrepeat{background:var(--chip);border:1px solid var(--line);
+        color:var(--dim);border-radius:50%;width:44px;height:44px;padding:0;
+        cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #shrepeat svg{width:20px;height:20px;fill:currentColor;display:block}
+  #shrepeat:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  #shrepeat:disabled{opacity:.35;cursor:default}
+  #shrepeat[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);
+        background:var(--bg)}
+  #shauto{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;
+          align-items:center;margin:0 0 14px;font-size:13px;color:var(--dim)}
+  #shauto .albl{justify-self:end;white-space:nowrap}
+  #shauto .step{justify-self:center}
+  #shauto .aside{justify-self:start;display:flex;align-items:center;gap:10px}
   /* A stepper, not a slider: a slider needs a precise drag to land on a value
      and there are only eleven of them. Off is the position below 1, so the
      same control is the on/off switch -- there is no second toggle to get out
@@ -407,7 +413,12 @@
     #shtr button#shrepeat{right:0}
     #shnow{height:88px}
     #shnow .s{font-size:16px}
-    #shauto{gap:8px}
+    #shauto{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+    /* display:contents dissolves the aside so repeat and the countdown wrap
+       INDEPENDENTLY. As one flex item they moved together, which pushed both
+       onto a second line and cost 52px; separated, repeat joins the stepper it
+       modifies and only the countdown wraps. */
+    #shauto .aside{display:contents}
     #shleft{min-width:0}
     #shq{flex:1 1 100%}
   }
@@ -469,20 +480,22 @@
       <button type="button" id="shnext" aria-label="Next"><svg
         viewBox="0 0 24 24" aria-hidden="true"><path
         d="M14.8 6H17v12h-2.2zM5 18l8.6-6L5 6z"/></svg></button>
-      <button type="button" id="shrepeat" aria-pressed="false"
-        aria-label="Repeat this performance"><svg viewBox="0 0 24 24"
-        aria-hidden="true"><path
-        d="M7 7h10v2.5L21 6l-4-3.5V5H5v6h2zm10 10H7v-2.5L3 18l4 3.5V19h12v-6h-2z"
-        /></svg></button>
     </div>
     <div id="shauto">
-      <span>Auto-advance</span>
+      <span class="albl">Auto-advance</span>
       <span class="step">
         <button type="button" id="shadvdn" aria-label="Less">&minus;</button>
         <span class="val" id="shadvval">Off</span>
         <button type="button" id="shadvup" aria-label="More">+</button>
       </span>
-      <span id="shleft"></span>
+      <span class="aside">
+        <button type="button" id="shrepeat" aria-pressed="false"
+          aria-label="Repeat this performance"><svg viewBox="0 0 24 24"
+          aria-hidden="true"><path
+          d="M7 7h10v2.5L21 6l-4-3.5V5H5v6h2zm10 10H7v-2.5L3 18l4 3.5V19h12v-6h-2z"
+          /></svg></button>
+        <span id="shleft"></span>
+      </span>
     </div>
     <div id="shbar">
       <input type="search" id="shq" placeholder="Filter by song, artist or stream"
