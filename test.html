@@ -985,9 +985,29 @@ guard("playopt", function(){
   var shPanel = document.getElementById("shuffle");
   var shq = document.getElementById("shq"), qbox = document.getElementById("q");
   var shOrder = [], shPos = -1, shAdv = 0, shLeft = 0, shRepeat = false;
+  // Set when a new interval is shorter than what this performance has already
+  // played. The song is then exempt and the setting starts at the next one.
+  var shHold = false;
   var shTimer = null, shWait = null;
-  try{ shAdv = Math.max(0, Math.min(10,
-       parseInt(sessionStorage.getItem("songlist-adv"), 10) || 0)); }catch(e){}
+  // Half-minute marks through 6:00, whole minutes above it. Shaped to the
+  // data rather than to round numbers: across 908 rows the gap between
+  // consecutive song starts sits at p25 4:40, median 5:28, p75 6:26, and only
+  // 19 of 908 fall under three minutes -- so fine steps belong in the middle
+  // of that band and are wasted anywhere else. Values are SECONDS.
+  var SH_STEPS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360,
+                  420, 480, 540, 600];
+  function shStepIndex(v){
+    for (var i = 0; i < SH_STEPS.length; i++) if (SH_STEPS[i] === v) return i;
+    return 0;
+  }
+  // A NEW storage key, deliberately. shAdv used to hold MINUTES, so an old
+  // stored "2" read as seconds would silently become a two-second timer.
+  // Renaming is the only way an old value cannot be misread -- the same trap
+  // as the play mode being tested against "yt" rather than "here".
+  try{
+    var shSaved = parseInt(sessionStorage.getItem("songlist-adv-s"), 10);
+    if (SH_STEPS.indexOf(shSaved) > 0) shAdv = shSaved;
+  }catch(e){}
   try{ shRepeat = sessionStorage.getItem("songlist-repeat") === "1"; }catch(e){}
   // Drawn, not typed -- see the CSS note. Built here so the play/pause swap is
   // a string assignment rather than two elements to keep in sync.
@@ -1082,9 +1102,9 @@ guard("playopt", function(){
   }
   function shPaintAuto(){
     var val = shBy("shadvval"), dn = shBy("shadvdn"), up = shBy("shadvup");
-    if (val) val.textContent = shAdv ? (shAdv + " min") : "Off";
+    if (val) val.textContent = shAdv ? shFmt(shAdv) : "Off";
     if (dn) dn.disabled = (shAdv <= 0);
-    if (up) up.disabled = (shAdv >= 10);
+    if (up) up.disabled = (shStepIndex(shAdv) >= SH_STEPS.length - 1);
     // Repeat has no clock of its own -- it changes where the auto-advance timer
     // GOES when it fires. With no timer there is nothing to change, so the
     // button is disabled rather than sitting there looking live and doing
@@ -1106,13 +1126,42 @@ guard("playopt", function(){
     // the countdown alive at the end of the list, where "next" would be a lie
     // but "repeat" is exactly what happens.
     var show = shAdv && shPos >= 0 && (shRepeat || !shAtEnd());
-    if (left) left.textContent = show
-      ? ((shRepeat ? "repeat in " : "next in ") + shFmt(shLeft)) : "";
+    // A frozen "next in 0:00" would read as broken, so the hold explains itself.
+    if (left) left.textContent = !show ? ""
+      : shHold ? "from next song"
+      : ((shRepeat ? "repeat in " : "next in ") + shFmt(shLeft));
   }
-  function shSetAdv(v){
-    shAdv = Math.max(0, Math.min(10, v));
-    try{ sessionStorage.setItem("songlist-adv", String(shAdv)); }catch(e){}
-    shLeft = shAdv * 60;
+  // How long THIS performance has already run, asked of the player rather than
+  // tracked in a counter of our own. A counter would not have been running
+  // while auto-advance was off, which is precisely the case this exists for.
+  // Guarded both ways: negative if the viewer scrubbed back before the song
+  // started, absurd if the player is between videos.
+  function shPlayed(){
+    var tr = shOrder[shPos];
+    if (!tr) return 0;
+    try{
+      var d = player.getCurrentTime() - secsOf(tr.dataset.href || "");
+      return (d > 0 && d < 86400) ? d : 0;
+    }catch(e){ return 0; }
+  }
+  function shSetAdvIndex(i){
+    i = Math.max(0, Math.min(SH_STEPS.length - 1, i));
+    shAdv = SH_STEPS[i];
+    try{ sessionStorage.setItem("songlist-adv-s", String(shAdv)); }catch(e){}
+    // Deduct what has already been played: "auto-advance every 5:00" means the
+    // performance gets five minutes, not five MORE from whenever the dial was
+    // touched -- setting it three minutes in used to grant eight, and every
+    // further nudge restarted the whole allowance again.
+    //
+    // If that leaves nothing, the current performance is EXEMPT rather than
+    // advanced on the spot. Firing immediately is defensible arithmetic and bad
+    // behaviour: it yanks the song you are listening to as a side effect of
+    // touching a dial, and it makes stepping UP through a value you have
+    // already passed impossible. Held, the setting simply begins at the next
+    // song, and stepping through short values costs nothing.
+    var rem = shAdv - shPlayed();
+    shHold = !!shAdv && rem <= 0;
+    shLeft = (shAdv && !shHold) ? Math.round(rem) : 0;
     shPaintAuto();
   }
   function shLoad(i){
@@ -1121,7 +1170,8 @@ guard("playopt", function(){
     var tr = shOrder[i], href = tr.dataset.href || "", v = vidOf(href);
     shPaintNow(tr);
     shCount();
-    shLeft = shAdv * 60;
+    shHold = false;
+    shLeft = shAdv;
     shPaintAuto();
     // Reuses the same play() the table uses, so a shuffled pair that happens to
     // sit in the same stream seeks instead of reloading -- the reliable path.
@@ -1145,7 +1195,8 @@ guard("playopt", function(){
     var href = tr.dataset.href || "", v = vidOf(href);
     if (!v) return;
     play(v, secsOf(href));
-    shLeft = shAdv * 60;
+    shHold = false;
+    shLeft = shAdv;
     shPaintAuto();
   }
   function shAdvance(){ if (shRepeat) shReplay(); else shNext(); }
@@ -1155,7 +1206,7 @@ guard("playopt", function(){
   // pausing with YouTube's own control inside the frame behave identically and
   // it can never fire mid-pause.
   function shTick(){
-    if (mode !== "shuffle" || !shAdv || shPos < 0) return;
+    if (mode !== "shuffle" || !shAdv || shPos < 0 || shHold) return;
     if (shState() !== 1) return;
     if (shLeft > 0) shLeft--;
     shPaintAuto();
@@ -1179,6 +1230,8 @@ guard("playopt", function(){
     // deliberate act, so an ended video waits for Next exactly as before --
     // this fixes the timer stalling, it does not make the mode self-advancing.
     if (mode !== "shuffle" || !shAdv || shPos < 0) return;
+    // A held song still advances when the VIDEO ends -- the hold exempts it
+    // from the timer, not from running out of material.
     if (shState() === 0) shAdvance();
   }
   function shEnter(){
@@ -1222,8 +1275,8 @@ guard("playopt", function(){
     try{ sessionStorage.setItem("songlist-repeat", shRepeat ? "1" : "0"); }catch(e){}
     shPaintAuto();
   });
-  shBind("shadvdn", function(){ shSetAdv(shAdv - 1); });
-  shBind("shadvup", function(){ shSetAdv(shAdv + 1); });
+  shBind("shadvdn", function(){ shSetAdvIndex(shStepIndex(shAdv) - 1); });
+  shBind("shadvup", function(){ shSetAdvIndex(shStepIndex(shAdv) + 1); });
   shBind("shagain", function(){ shBuild(); shNext(); });
   if (shq) shq.addEventListener("input", function(){
     // Debounced, because a rebuild starts a video: without this every keystroke
