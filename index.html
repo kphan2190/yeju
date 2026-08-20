@@ -60,9 +60,10 @@
        padding:9px 12px;font:inherit;font-size:14px}
   input[type=search]:focus{outline:none;border-color:var(--accent)}
   .count{color:var(--dim);font-size:13px;white-space:nowrap}
-  #theme{background:var(--chip);border:1px solid var(--line);color:var(--ink);
-         border-radius:8px;padding:9px 13px;font:inherit;font-size:13px;
-         cursor:pointer;white-space:nowrap}
+  #theme{background:var(--bg);border:1px solid var(--line);color:var(--ink);
+         border-radius:9px;padding:9px 13px;font:inherit;font-size:13px;
+         cursor:pointer;white-space:nowrap;min-height:42px}
+  #theme span{margin-left:5px}
   #theme:hover{border-color:var(--accent);color:var(--accent)}
   table{width:100%;border-collapse:collapse}
   /* top is a sum, not 0: the player and the filter bar are sticky above this,
@@ -128,12 +129,25 @@
   /* Play Option: which venue a tapped song opens in. Its own block rather than
      another control in the filter bar, because it changes what every row DOES
      and that deserves to be stated, not tucked away. */
+  /* Centred as a group -- label, toggle, theme -- with the hint on its own
+     centred line beneath. The hint used to be flex:1 and ate the remaining
+     width, which pinned the toggle hard left however the row was justified. */
   #playopt{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+           justify-content:center;
            background:var(--chip);border:1px solid var(--line);
            border-radius:10px;padding:10px 12px;margin:0 0 14px}
   #playopt[hidden]{display:none}
+  /* Negative margins buy a ~29px tap height inside the row's existing 17px,
+     the same trick the notice's dismiss button uses to reach 44px without
+     making its panel taller. */
   #playopt .lbl{font-size:11.5px;font-weight:700;color:var(--ink);
-                text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+                text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;
+                background:none;border:none;font-family:inherit;cursor:pointer;
+                padding:6px 8px;margin:-6px -8px;display:flex;
+                align-items:center;gap:5px}
+  #playopt .lbl:hover{color:var(--accent)}
+  #playopt .lbl .cv{font-size:9px;opacity:.8}
+  #playopt .hint[hidden]{display:none}
   /* An accent-outlined control on its own surface. It was a hairline --line box
      holding two --dim labels on a --chip panel -- three near-identical greys
      deep, and reported as hard to spot, correctly. The unselected half now
@@ -151,8 +165,8 @@
      in one of them. --bg inverts with the theme and stays legible in both. */
   #playopt .opt[aria-checked="true"]{background:var(--accent);color:var(--bg);
                                      font-weight:600}
-  #playopt .hint{font-size:12px;color:var(--dim);flex:1;min-width:170px;
-                 line-height:1.4}
+  #playopt .hint{font-size:12px;color:var(--dim);flex:1 1 100%;min-width:0;
+                 line-height:1.4;text-align:center}
   #player{margin:0 0 14px}
   #player[hidden]{display:none}
   /* Sticky at EVERY width, not just on a phone: scrolling for the next song is
@@ -208,6 +222,114 @@
             margin:-12px -13px -12px 0;
             display:flex;align-items:center;justify-content:center}
   #samevodx:hover{opacity:1}
+
+  /* Shuffle: a stripped browse mode rather than a lookup tool. The table, the
+     filter bar and the coverage line go, and what is left is the performance
+     and the controls for it. Switched by ONE attribute on the root, which the
+     script alone ever writes -- so with no JavaScript this whole mode does not
+     exist and the page is the plain anchor table it has always been. */
+  /* The coverage line STAYS. It belongs to the page identity under the h1, not
+     to the table, and hiding it made shuffle the one mode with a different
+     header -- the only inconsistency left across the three options. */
+  :root[data-play="shuffle"] .bar,
+  :root[data-play="shuffle"] table,
+  :root[data-play="shuffle"] #none{display:none}
+  #shuffle{display:none}
+  :root[data-play="shuffle"] #shuffle{display:block}
+  /* FIXED height, not min-height, and the reason is the whole point of this
+     mode: the transport sits directly under this block and gets tapped over
+     and over, so if the block grows with the title then Next moves under your
+     finger between songs. Titles here run from 3 characters to 66, which is
+     one line to three, so the space has to be reserved rather than earned.
+     The content is centred inside it, so a short title reads as deliberately
+     placed rather than as a gap. */
+  #shnow{margin:0 0 12px;text-align:center;height:96px;
+         display:flex;flex-direction:column;justify-content:center}
+  /* Two lines, then ellipsis. Two is what the reserved height pays for, and it
+     covers all but a handful: 56 of 434 titles wrap to a second line at 375px
+     and only about four reach a third. The full title is always in the table. */
+  #shnow .s{font-size:18px;font-weight:650;line-height:1.3;margin-top:2px;
+            display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+            overflow:hidden}
+  /* One line each -- an artist like "Olivia Rodrigo & Robert Smith" or a long
+     VOD title would otherwise wrap and eat the height the title needs. */
+  #shnow .a{font-size:14px;color:var(--dim);
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #shnow .w{font-size:12.5px;color:var(--dim);margin-top:4px;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 46px and 54px are floors, not paddings: this is the one part of the page
+     built to be tapped repeatedly without looking, and the same-stream notice
+     already established 44px as the smallest thing worth aiming at here. */
+  /* Round buttons with drawn icons, laid out like a player's transport. The
+     icons are inline SVG rather than characters ON PURPOSE: the media glyphs
+     (U+23EE, U+23F8 and friends) render as emoji on some systems and as tofu
+     on others, and this page has already shipped one broken character. SVG
+     paths depend on no font, carry no backslash for Python to eat, and take
+     their colour from currentColor so both themes work with no extra rules. */
+  #shtr{display:flex;gap:14px;align-items:center;justify-content:center;
+        position:relative;margin:0 0 14px;min-height:60px}
+  #shtr button{background:var(--chip);border:1px solid var(--line);
+        color:var(--ink);border-radius:50%;cursor:pointer;padding:0;
+        width:48px;height:48px;
+        display:flex;align-items:center;justify-content:center}
+  #shtr button:hover:not(:disabled){border-color:var(--accent);
+        color:var(--accent)}
+  #shtr button:disabled{opacity:.35;cursor:default}
+  #shtr svg{width:22px;height:22px;fill:currentColor;display:block}
+  /* Filled accent, the one unmistakable target in the row. --bg for the glyph,
+     never white: --accent is a dark blue in light mode and a pale blue in dark,
+     so white would be unreadable in one of them. Same rule as the toggle. */
+  #shtr button#shplay{width:60px;height:60px;background:var(--accent);
+        border-color:var(--accent);color:var(--bg)}
+  #shtr button#shplay svg{width:26px;height:26px}
+  #shtr button#shplay:hover:not(:disabled){opacity:.88;color:var(--bg);
+        border-color:var(--accent)}
+  /* Repeat is a STATE rather than an action, and it modifies the auto-advance
+     timer rather than the transport, so it lives in that row -- see #shauto. */
+  #shrepeat{background:var(--chip);border:1px solid var(--line);
+        color:var(--dim);border-radius:50%;width:44px;height:44px;padding:0;
+        cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #shrepeat svg{width:20px;height:20px;fill:currentColor;display:block}
+  #shrepeat:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  #shrepeat:disabled{opacity:.35;cursor:default}
+  #shrepeat[aria-pressed="true"]{color:var(--accent);border-color:var(--accent);
+        background:var(--bg)}
+  #shauto{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;
+          align-items:center;margin:0 0 14px;font-size:13px;color:var(--dim)}
+  #shauto .albl{justify-self:end;white-space:nowrap}
+  #shauto .step{justify-self:center}
+  #shauto .aside{justify-self:start;display:flex;align-items:center;gap:10px}
+  /* A stepper, not a slider: a slider needs a precise drag to land on a value
+     and there are only eleven of them. Off is the position below 1, so the
+     same control is the on/off switch -- there is no second toggle to get out
+     of step with it. Buttons rather than a number input on purpose, since a
+     focusable control under 16px is what makes iOS Safari zoom the page in and
+     refuse to zoom back out. */
+  #shauto .step{display:flex;border:1px solid var(--line);border-radius:9px;
+          overflow:hidden;background:var(--bg)}
+  #shauto .step button{background:none;border:none;color:var(--ink);
+          font:inherit;font-size:17px;cursor:pointer;width:46px;height:44px}
+  #shauto .step button:hover:not(:disabled){background:var(--hover2);
+          color:var(--accent)}
+  #shauto .step button:disabled{opacity:.35;cursor:default}
+  #shauto .val{min-width:78px;display:flex;align-items:center;
+          justify-content:center;font-size:13px;color:var(--ink);
+          border-left:1px solid var(--line);border-right:1px solid var(--line)}
+  #shleft{font-variant-numeric:tabular-nums;min-width:92px}
+  #shbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+  #shcount{color:var(--dim);font-size:13px;white-space:nowrap}
+  #shend{display:none;background:var(--chip);border:1px solid var(--line);
+         border-radius:10px;padding:16px;text-align:center;margin:0 0 12px}
+  #shend.on{display:block}
+  #shend p{margin:0 0 12px;font-size:14px}
+  /* There is no "back to the list" button: the Play Options card is on screen
+     in shuffle too, so Play here and Open in YouTube are already one click
+     away. A second control doing the same thing was redundant, and on a phone
+     it was the one element that fell below the fold. */
+  #shend button{background:var(--bg);border:2px solid var(--accent);
+         color:var(--accent);border-radius:9px;font:inherit;font-size:13px;
+         font-weight:600;padding:10px 16px;cursor:pointer;min-height:44px}
+  #shend button:hover{background:var(--accent);color:var(--bg)}
 
   /* Phones: a four-column table at 375px is unreadable however it is scaled,
      so each song becomes a stacked block -- artist over title, then when and
@@ -268,6 +390,14 @@
     .more ol{columns:1;padding-left:18px}
     #playopt{gap:8px;padding:9px 10px}
     #playopt .hint{flex:1 1 100%;min-width:0}
+    #theme{width:44px;padding:9px 0;text-align:center}
+    #theme span{display:none}
+    /* The card's CONTENT box is 327px at 375px wide, not 349 -- 20px of padding
+       and 2px of border. At the desktop 14px option padding the toggle is 288
+       and 288+8+44 overflows that by 13, so the theme button wrapped to a row
+       of its own and the saving did not happen. 10px brings the toggle to ~264
+       and the two share a row. */
+    #playopt .opt{padding:8px 10px}
     /* The placeholder is on screen from load now that "play here" is the
        default, so it buys its space back where space is scarcest. */
     #player .ph{padding:14px 12px;font-size:12.5px}
@@ -276,6 +406,36 @@
        so --barh is measured but nothing consumes it -- the bar is the last
        pinned strip on a phone. */
     #player:not([hidden]){padding:6px 0;margin:0 0 10px}
+    /* Round icon buttons are far narrower than the labelled ones they replaced,
+       so the row no longer has to fight for width: 48+60+48 plus gaps is 180 of
+       349, leaving the repeat toggle its own space at the right edge. */
+    #shtr{gap:12px}
+    #shtr button#shrepeat{right:0}
+    #shnow{height:88px}
+    #shnow .s{font-size:16px}
+    /* Two lines on a phone: the stepper alone on the first, the label and the
+       countdown on the second. That is what lets the stepper centre on the PLAY
+       BUTTON. Centring a flex line centres its GROUP, so an 80px label sharing
+       the line with a 172px stepper pushed the stepper 19px off the play
+       button's axis; moving the label off the line removes the imbalance, and
+       repeat is taken out of flow so it cannot reintroduce one.
+       display:contents dissolves the aside first, so repeat and the countdown
+       are independent items that can be ordered and wrapped separately. */
+    #shauto{position:relative;display:flex;flex-wrap:wrap;
+            justify-content:center;gap:8px}
+    #shauto .aside{display:contents}
+    #shauto .step{order:1}
+    /* An explicit line break. Ordering alone was not enough: stepper + label +
+       countdown measure 337px inside a 349px row, so they all FIT on one line
+       and the label simply moved sideways, shoving the stepper 83px off the
+       play button -- worse than the 19px it was meant to fix. A zero-height
+       flex-basis:100% pseudo-element between order 1 and order 3 forces the
+       wrap regardless of how much room is left. */
+    #shauto::after{content:"";order:2;flex-basis:100%;height:0;margin:-4px 0}
+    #shauto .albl{order:3}
+    #shleft{order:4;min-width:0}
+    #shrepeat{order:5;position:absolute;right:0;top:0}
+    #shq{flex:1 1 100%}
   }
 </style>
 <div class="wrap">
@@ -292,17 +452,76 @@
        choice cannot be honoured at all -- rows are plain anchors and always
        open YouTube -- so a dead control would be worse than no control. -->
   <div id="playopt" hidden>
-    <span class="lbl">Play Options</span>
+    <!-- The label IS the toggle for the description, which is what makes this
+         free: it was inert text occupying a row of its own, so folding the
+         hint behind it costs no height at all. -->
+    <button type="button" class="lbl" id="playwhy" aria-expanded="true"
+            aria-controls="playhint">Play Options<span
+            class="cv">&#9662;</span></button>
     <div class="opts" role="radiogroup" aria-label="Play Options">
       <button type="button" class="opt" data-play="here" role="radio"
               aria-checked="true">Play here</button>
       <button type="button" class="opt" data-play="yt" role="radio"
               aria-checked="false">Open in YouTube</button>
+      <button type="button" class="opt" data-play="shuffle" role="radio"
+              aria-checked="false">Shuffle</button>
     </div>
+    <button id="theme" type="button"></button>
     <span class="hint" id="playhint"></span>
   </div>
   <div id="player" hidden><p class="ph" id="playerph">Pick a song below and it
     plays here.</p></div>
+  <!-- Shuffle. Sits between the player and the filter bar so that in shuffle
+       mode -- where the bar and the table are hidden -- it reads straight down
+       from the video: what is playing, the controls for it, then how long each
+       one gets and what the pool is. Hidden by CSS until the script sets
+       data-play, so a browser running no JavaScript never sees it. -->
+  <div id="shuffle">
+    <!-- Artist ABOVE title, which is what the rest of the page already does:
+         the desktop table reads Artist | Title left to right, and a mobile row
+         stacks the small dim artist over the larger bold title. This block was
+         the only place reversing it. The title still dominates by size and
+         weight -- it is second in reading order, not second in emphasis. -->
+    <div id="shnow">
+      <div class="a" id="shartist"></div>
+      <div class="s" id="shsong"></div>
+      <div class="w" id="shwhen"></div>
+    </div>
+    <div id="shtr">
+      <button type="button" id="shprev" aria-label="Previous"><svg
+        viewBox="0 0 24 24" aria-hidden="true"><path
+        d="M7 6h2.2v12H7zm3.4 6 8.6 6V6z"/></svg></button>
+      <button type="button" id="shplay" aria-label="Play"></button>
+      <button type="button" id="shnext" aria-label="Next"><svg
+        viewBox="0 0 24 24" aria-hidden="true"><path
+        d="M14.8 6H17v12h-2.2zM5 18l8.6-6L5 6z"/></svg></button>
+    </div>
+    <div id="shauto">
+      <span class="albl">Auto-advance</span>
+      <span class="step">
+        <button type="button" id="shadvdn" aria-label="Less">&minus;</button>
+        <span class="val" id="shadvval">Off</span>
+        <button type="button" id="shadvup" aria-label="More">+</button>
+      </span>
+      <span class="aside">
+        <button type="button" id="shrepeat" aria-pressed="false"
+          aria-label="Repeat this performance"><svg viewBox="0 0 24 24"
+          aria-hidden="true"><path
+          d="M7 7h10v2.5L21 6l-4-3.5V5H5v6h2zm10 10H7v-2.5L3 18l4 3.5V19h12v-6h-2z"
+          /></svg></button>
+        <span id="shleft"></span>
+      </span>
+    </div>
+    <div id="shbar">
+      <input type="search" id="shq" placeholder="Filter by song, artist or stream"
+             autocomplete="off">
+      <span class="count" id="shcount"></span>
+    </div>
+    <div id="shend">
+      <p>You&rsquo;ve reached the end.</p>
+      <button type="button" id="shagain">Reshuffle</button>
+    </div>
+  </div>
   <div class="bar">
     <input type="search" id="q" placeholder="Filter by song, artist or stream"
            autocomplete="off">
@@ -317,7 +536,6 @@
       <option value="when">Last performance</option>
       <option value="times">All performances</option>
     </select>
-    <button id="theme" type="button"></button>
   </div>
   <table>
     <thead><tr>
@@ -379,8 +597,10 @@ guard("theme", function(){
   }
   function paint(){
     var d = isDark();
-    tbtn.innerHTML = d ? "&#9788; Light" : "&#9789; Dark";
+    tbtn.innerHTML = d ? "&#9788;<span>Light</span>"
+                       : "&#9789;<span>Dark</span>";
     tbtn.title = "Switch to " + (d ? "light" : "dark") + " mode";
+    tbtn.setAttribute("aria-label", tbtn.title);
   }
   // localStorage throws outright on a file:// page in some browsers rather
   // than just being empty, so every touch of it is wrapped.
@@ -508,7 +728,7 @@ guard("playopt", function(){
   // "here" is the default. Note the stored value is checked against "yt", not
   // "here": inverting the default without inverting this test would silently
   // ignore everyone who had already chosen the old default.
-  var KEY = "songlist-play", mode = "here";
+  var KEY = "songlist-play", mode = "here", shOn = false;
   // api: null before anything is attempted, then "loading" / "ready" / "failed".
   // frame is only used by the fallback path; player is the API instance.
   var api = null, player = null, frame = null, host = null, pending = null;
@@ -548,7 +768,7 @@ guard("playopt", function(){
   // cap, the bar because it wraps to two rows on a phone.
   var bar = document.querySelector(".bar");
   function fitSticky(){
-    var h = (mode === "here" && !pane.hidden) ? pane.offsetHeight : 0;
+    var h = (mode !== "yt" && !pane.hidden) ? pane.offsetHeight : 0;
     root.style.setProperty("--playerh", h + "px");
     // The bar wraps to two rows on a phone, so its height is a measurement too,
     // not a constant.
@@ -629,7 +849,8 @@ guard("playopt", function(){
     player = new YT.Player(host, {
       videoId: want.v,
       playerVars: {start: want.t, autoplay: 1, playsinline: 1, rel: 0},
-      events: {onReady: function(ev){
+      events: {onStateChange: function(){ onPlayerState(); },
+               onReady: function(ev){
         api = "ready";
         // The viewer may have tapped something else while the API was loading.
         if (pending && pending.v !== want.v)
@@ -678,7 +899,11 @@ guard("playopt", function(){
     // loses focus -- so the desktop strings say only what the option does. The
     // caveats are not softened for desktop, they are absent, because repeating
     // them there would be false.
-    hint.textContent = mode === "here"
+    hint.textContent = mode === "shuffle"
+      ? (touch
+         ? "Plays the list in a random order, one performance at a time. Audio stops when you leave the browser or lock the screen."
+         : "Plays the list in a random order, one performance at a time.")
+      : mode === "here"
       ? (touch
          ? "Songs play on this page, so jumping between songs in a stream works. Audio stops when you leave the browser or lock the screen."
          : "Songs play on this page.")
@@ -689,7 +914,7 @@ guard("playopt", function(){
     // involved. A data attribute rather than a shared variable keeps the two
     // guard() blocks independent -- one throwing still cannot take the other.
     root.setAttribute("data-play", mode);
-    if (mode === "here"){
+    if (mode !== "yt"){
       pane.hidden = false;
       var n = document.getElementById("samevod");
       if (n) n.hidden = true;
@@ -704,13 +929,48 @@ guard("playopt", function(){
       if (frame) frame.src = "about:blank";
       if (ph && !player && !frame) ph.style.display = "";
     }
+    // Entering and leaving are guarded so that re-picking the option you are
+    // already on does not silently reshuffle what you are listening to.
+    if (mode === "shuffle"){ if (!shOn){ shOn = true; shEnter(); } }
+    else if (shOn){ shOn = false; shLeave(); }
     fitSticky();
   }
+  // The description folds away behind the label. Default OPEN on a first visit
+  // and remembered once closed: the costs it states are real ones about the
+  // mode you are already in -- audio stopping when you leave the browser -- so
+  // hiding them from someone who has never read them would be the wrong trade.
+  // Once read, it is clutter forever, hence remembering the close.
+  var HKEY = "songlist-hint";
+  var why = document.getElementById("playwhy");
+  function paintHint(open){
+    if (!why || !hint) return;
+    hint.hidden = !open;
+    why.setAttribute("aria-expanded", open ? "true" : "false");
+    var cv = why.querySelector(".cv");
+    if (cv) cv.innerHTML = open ? "&#9662;" : "&#9656;";
+    fitSticky();
+  }
+  var hintOpen = true;
+  try{ if (localStorage.getItem(HKEY) === "0") hintOpen = false; }catch(e){}
+  if (why) why.addEventListener("click", function(){
+    hintOpen = !hintOpen;
+    try{ localStorage.setItem(HKEY, hintOpen ? "1" : "0"); }catch(e){}
+    paintHint(hintOpen);
+  });
+  paintHint(hintOpen);
+
   wrap.addEventListener("click", function(ev){
     var b = ev.target.closest && ev.target.closest(".opt");
     if (!b) return;
-    mode = (b.dataset.play === "here") ? "here" : "yt";
-    try{ localStorage.setItem(KEY, mode); }catch(e){}
+    var want = b.dataset.play;
+    if (want !== "here" && want !== "yt" && want !== "shuffle") return;
+    mode = want;
+    // Shuffle is deliberately NOT remembered, where the other two are. They are
+    // preferences; this is an activity. Persisting it would mean a page that
+    // starts fetching from YouTube and playing on LOAD, and "0 external
+    // references until you actually tap a song" is worth more than saving one
+    // click on the way back in.
+    if (mode !== "shuffle"){ try{ localStorage.setItem(KEY, mode); }catch(e){} }
     paint();
   });
   // Only intercepts in "play here" mode. In the default mode this listener does
@@ -729,6 +989,338 @@ guard("playopt", function(){
     // always is on a phone, where it is sticky.
     pane.scrollIntoView({block: "nearest"});
   });
+
+  // ------------------------------------------------------------ Shuffle mode
+  // A ONE-TIME shuffle of the filtered list, walked forward. That is what makes
+  // it repeat-free, and it is not the same thing as drawing at random each
+  // time: with 430 songs, random draws land on something already heard after
+  // about 25 of them, which reads as broken however correct it is. Walking a
+  // fixed order also makes Prev honest -- it is a step back along the order, so
+  // it replays what actually played rather than drawing backwards.
+  var shPanel = document.getElementById("shuffle");
+  var shq = document.getElementById("shq"), qbox = document.getElementById("q");
+  var shOrder = [], shPos = -1, shAdv = 0, shLeft = 0, shRepeat = false;
+  // Set when a new interval is shorter than what this performance has already
+  // played. The song is then exempt and the setting starts at the next one.
+  var shHold = false;
+  var shTimer = null, shWait = null;
+  // Half-minute marks through 6:00, whole minutes above it. Shaped to the
+  // data rather than to round numbers: across 908 rows the gap between
+  // consecutive song starts sits at p25 4:40, median 5:28, p75 6:26, and only
+  // 19 of 908 fall under three minutes -- so fine steps belong in the middle
+  // of that band and are wasted anywhere else. Values are SECONDS.
+  var SH_STEPS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360,
+                  420, 480, 540, 600];
+  function shStepIndex(v){
+    for (var i = 0; i < SH_STEPS.length; i++) if (SH_STEPS[i] === v) return i;
+    return 0;
+  }
+  // A NEW storage key, deliberately. shAdv used to hold MINUTES, so an old
+  // stored "2" read as seconds would silently become a two-second timer.
+  // Renaming is the only way an old value cannot be misread -- the same trap
+  // as the play mode being tested against "yt" rather than "here".
+  try{
+    var shSaved = parseInt(sessionStorage.getItem("songlist-adv-s"), 10);
+    if (SH_STEPS.indexOf(shSaved) > 0) shAdv = shSaved;
+  }catch(e){}
+  try{ shRepeat = sessionStorage.getItem("songlist-repeat") === "1"; }catch(e){}
+  // Drawn, not typed -- see the CSS note. Built here so the play/pause swap is
+  // a string assignment rather than two elements to keep in sync.
+  function shIcon(d){
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d +
+           '"/></svg>';
+  }
+  var ICON_PLAY = shIcon("M8 5v14l11-7z");
+  var ICON_PAUSE = shIcon("M6.5 5h3.6v14H6.5zm7.4 0h3.6v14h-3.6z");
+
+  function shBy(id){ return document.getElementById(id); }
+  function shText(el){ return el ? (el.textContent || "").trim() : ""; }
+  function shFmt(n){
+    var m = Math.floor(n / 60), r = n % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+  function shState(){
+    try{ if (player && player.getPlayerState) return player.getPlayerState(); }
+    catch(e){}
+    return -1;
+  }
+  // Reads the rows straight out of the table rather than being handed a list,
+  // so shuffle and the table can never disagree about what is in the archive,
+  // and the two guard() blocks stay independent of each other.
+  function shPool(){
+    var t = shq ? shq.value.trim().toLowerCase() : "", out = [];
+    [].forEach.call(document.querySelectorAll("#rows tr.s"), function(tr){
+      if (!t || (tr.dataset.k || "").indexOf(t) !== -1) out.push(tr);
+    });
+    return out;
+  }
+  function shBuild(){
+    shOrder = shPool();
+    for (var i = shOrder.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = shOrder[i]; shOrder[i] = shOrder[j]; shOrder[j] = tmp;
+    }
+    shPos = -1;
+    shShowEnd(false);
+    shPaintNav();
+    shCount();
+  }
+  function shCount(n, pos){
+    var el = shBy("shcount");
+    if (!el) return;
+    if (n === undefined) n = shOrder.length;
+    if (pos === undefined) pos = shPos;
+    var t = shq ? shq.value.trim() : "";
+    var at = (pos >= 0 && pos < n) ? ((pos + 1) + " of ") : "";
+    el.textContent = n
+      ? (at + n + (n === 1 ? " song" : " songs") +
+         (t ? (" matching " + String.fromCharCode(8220) + t +
+               String.fromCharCode(8221)) : ""))
+      : "Nothing matches that.";
+  }
+  function shShowEnd(on){
+    var el = shBy("shend");
+    if (el) el.classList.toggle("on", !!on);
+    var nx = shBy("shnext");
+    if (nx) nx.disabled = !!on;
+  }
+  function shPaintNow(tr){
+    var song = shBy("shsong"), art = shBy("shartist"), when = shBy("shwhen");
+    if (!song || !art || !when) return;
+    if (!tr){ song.textContent = ""; art.textContent = ""; when.textContent = "";
+              return; }
+    song.textContent = shText(tr.querySelector("td.song"));
+    art.textContent = shText(tr.querySelector("td.artist"));
+    // fromCharCode rather than the character itself or an escape: every
+    // backslash in this template is Python's before it is the browser's, and a
+    // separator written as a CSS escape has already shipped a NUL to a phone.
+    var vod = shText(tr.querySelector(".vod"));
+    when.textContent = (tr.dataset.when || "") +
+                       (vod ? (" " + String.fromCharCode(183) + " " + vod) : "");
+  }
+  function shPaintPlay(){
+    var b = shBy("shplay");
+    if (!b) return;
+    // Only the API reports state. The plain-iframe fallback cannot, so the
+    // button goes dead rather than lying about what it will do.
+    if (api === "failed"){ b.disabled = true; b.innerHTML = ICON_PLAY; return; }
+    var st = shState(), on = (st === 1 || st === 3);
+    b.innerHTML = on ? ICON_PAUSE : ICON_PLAY;
+    b.setAttribute("aria-label", on ? "Pause" : "Play");
+  }
+  function shAtEnd(){ return shPos >= 0 && shPos + 1 >= shOrder.length; }
+  function shPaintNav(){
+    var pv = shBy("shprev");
+    // There is nothing behind the first entry, so the button says so rather
+    // than looking live and doing nothing. Next disables itself in shShowEnd.
+    if (pv) pv.disabled = (shPos <= 0);
+  }
+  function shPaintAuto(){
+    var val = shBy("shadvval"), dn = shBy("shadvdn"), up = shBy("shadvup");
+    if (val) val.textContent = shAdv ? shFmt(shAdv) : "Off";
+    if (dn) dn.disabled = (shAdv <= 0);
+    if (up) up.disabled = (shStepIndex(shAdv) >= SH_STEPS.length - 1);
+    // Repeat has no clock of its own -- it changes where the auto-advance timer
+    // GOES when it fires. With no timer there is nothing to change, so the
+    // button is disabled rather than sitting there looking live and doing
+    // nothing, which is the failure this page keeps trying to avoid.
+    var rp = shBy("shrepeat");
+    if (rp){
+      rp.disabled = !shAdv;
+      rp.setAttribute("aria-pressed", (shRepeat && shAdv) ? "true" : "false");
+      rp.title = shAdv
+        ? (shRepeat ? "Repeating this performance"
+                    : "Repeat this performance instead of moving on")
+        : "Set an auto-advance time to use repeat";
+    }
+    var left = shBy("shleft");
+    // Blank at the end of the list as well as when off: there is nothing to
+    // advance TO, so a running countdown there is a promise it cannot keep --
+    // it sat at "next in 0:00" indefinitely.
+    // Says where it is GOING, not just that time is passing. Repeat also keeps
+    // the countdown alive at the end of the list, where "next" would be a lie
+    // but "repeat" is exactly what happens.
+    var show = shAdv && shPos >= 0 && (shRepeat || !shAtEnd());
+    // A frozen "next in 0:00" would read as broken, so the hold explains itself.
+    // Wording went through three passes. "from next song" read as "advancing
+    // from the next song"; naming the subject as "applies FROM next song" only
+    // moved the ambiguity to the preposition, since "from" (onward) and "to"
+    // (that one song) are both plausible readings of a setting change. "takes
+    // effect next song" has no preposition to misread.
+    if (left) left.textContent = !show ? ""
+      : shHold ? "takes effect next song"
+      : ((shRepeat ? "repeat in " : "next in ") + shFmt(shLeft));
+    // The colon only earns its place when something follows it on the line,
+    // which on a phone is the countdown sitting beside the label.
+    var albl = document.querySelector("#shauto .albl");
+    if (albl) albl.textContent = (left && left.textContent)
+      ? "Auto-advance:" : "Auto-advance";
+  }
+  // How long THIS performance has already run, asked of the player rather than
+  // tracked in a counter of our own. A counter would not have been running
+  // while auto-advance was off, which is precisely the case this exists for.
+  // Guarded both ways: negative if the viewer scrubbed back before the song
+  // started, absurd if the player is between videos.
+  function shPlayed(){
+    var tr = shOrder[shPos];
+    if (!tr) return 0;
+    try{
+      var d = player.getCurrentTime() - secsOf(tr.dataset.href || "");
+      return (d > 0 && d < 86400) ? d : 0;
+    }catch(e){ return 0; }
+  }
+  function shSetAdvIndex(i){
+    i = Math.max(0, Math.min(SH_STEPS.length - 1, i));
+    shAdv = SH_STEPS[i];
+    try{ sessionStorage.setItem("songlist-adv-s", String(shAdv)); }catch(e){}
+    // Deduct what has already been played: "auto-advance every 5:00" means the
+    // performance gets five minutes, not five MORE from whenever the dial was
+    // touched -- setting it three minutes in used to grant eight, and every
+    // further nudge restarted the whole allowance again.
+    //
+    // If that leaves nothing, the current performance is EXEMPT rather than
+    // advanced on the spot. Firing immediately is defensible arithmetic and bad
+    // behaviour: it yanks the song you are listening to as a side effect of
+    // touching a dial, and it makes stepping UP through a value you have
+    // already passed impossible. Held, the setting simply begins at the next
+    // song, and stepping through short values costs nothing.
+    var rem = shAdv - shPlayed();
+    shHold = !!shAdv && rem <= 0;
+    shLeft = (shAdv && !shHold) ? Math.round(rem) : 0;
+    shPaintAuto();
+  }
+  function shLoad(i){
+    if (i < 0 || i >= shOrder.length) return;
+    shPos = i;
+    var tr = shOrder[i], href = tr.dataset.href || "", v = vidOf(href);
+    shPaintNow(tr);
+    shCount();
+    shHold = false;
+    shLeft = shAdv;
+    shPaintAuto();
+    // Reuses the same play() the table uses, so a shuffled pair that happens to
+    // sit in the same stream seeks instead of reloading -- the reliable path.
+    if (v) play(v, secsOf(href));
+    shPaintNav();
+    shPaintPlay();
+  }
+  function shNext(){
+    if (!shOrder.length) return;
+    if (shPos + 1 >= shOrder.length){ shShowEnd(true); shPaintAuto(); return; }
+    shShowEnd(false);
+    shLoad(shPos + 1);
+  }
+  function shPrev(){ if (shPos > 0){ shShowEnd(false); shLoad(shPos - 1); } }
+  // Back to this performance's own start. play() sees the same video id and
+  // seeks rather than reloading, so a repeat costs no fresh load and rolls no
+  // fresh ad -- the same reason same-stream taps are the reliable path.
+  function shReplay(){
+    var tr = shOrder[shPos];
+    if (!tr) return;
+    var href = tr.dataset.href || "", v = vidOf(href);
+    if (!v) return;
+    play(v, secsOf(href));
+    shHold = false;
+    shLeft = shAdv;
+    shPaintAuto();
+  }
+  function shAdvance(){ if (shRepeat) shReplay(); else shNext(); }
+  // One ticker, counting only while the player says PLAYING. That is the whole
+  // mechanism behind "auto-advance pauses with the video": it does not listen
+  // for a pause, it simply stops counting, so pausing with our button and
+  // pausing with YouTube's own control inside the frame behave identically and
+  // it can never fire mid-pause.
+  function shTick(){
+    if (mode !== "shuffle" || !shAdv || shPos < 0 || shHold) return;
+    if (shState() !== 1) return;
+    if (shLeft > 0) shLeft--;
+    shPaintAuto();
+    if (shLeft <= 0) shAdvance();
+  }
+  // Called from the player's onStateChange, so the label follows the real
+  // player rather than a boolean of our own -- otherwise pausing inside the
+  // iframe leaves the button reading "Pause" over a stopped video.
+  function onPlayerState(){
+    shPaintPlay();
+    // 0 = ENDED: the VIDEO ran out before the timer did. The tick only counts
+    // while the player reports PLAYING, so without this the countdown freezes
+    // at whatever it had left and nothing ever advances -- it presents as the
+    // whole mode stalling, which is exactly how it was reported.
+    //
+    // Not a rare edge. It catches every one of the standalone covers, where
+    // the whole video IS the song, and any stream row whose song starts within
+    // the auto-advance window of the end of the VOD.
+    //
+    // Gated on auto-advance being ON. With it off, advancing is meant to be a
+    // deliberate act, so an ended video waits for Next exactly as before --
+    // this fixes the timer stalling, it does not make the mode self-advancing.
+    if (mode !== "shuffle" || !shAdv || shPos < 0) return;
+    // A held song still advances when the VIDEO ends -- the hold exempts it
+    // from the timer, not from running out of material.
+    if (shState() === 0) shAdvance();
+  }
+  function shEnter(){
+    if (!shPanel) return;
+    // The filter travels BOTH ways: narrowing the table and then shuffling
+    // keeps what you narrowed to, and coming back out keeps it too.
+    if (shq && qbox) shq.value = qbox.value;
+    shBuild();
+    shPaintAuto();
+    if (!shTimer) shTimer = setInterval(shTick, 1000);
+    if (shOrder.length) shNext();
+    else { shPaintNow(null); shPaintPlay(); }
+  }
+  function shLeave(){
+    if (shTimer){ clearInterval(shTimer); shTimer = null; }
+    if (shWait){ clearTimeout(shWait); shWait = null; }
+    if (shq && qbox && qbox.value !== shq.value){
+      qbox.value = shq.value;
+      // Told through the DOM rather than by calling into the table's block, so
+      // neither guard() block can take the other down.
+      try{ qbox.dispatchEvent(new Event("input")); }catch(e){}
+    }
+  }
+  function shBind(id, fn){
+    var el = shBy(id);
+    if (el) el.addEventListener("click", fn);
+  }
+  shBind("shprev", shPrev);
+  shBind("shnext", shNext);
+  shBind("shplay", function(){
+    if (api === "failed") return;
+    try{
+      if (shState() === 1){ if (player && player.pauseVideo) player.pauseVideo(); }
+      else if (player && player.playVideo) player.playVideo();
+    }catch(e){}
+    shPaintPlay();
+  });
+  shBind("shrepeat", function(){
+    if (!shAdv) return;
+    shRepeat = !shRepeat;
+    try{ sessionStorage.setItem("songlist-repeat", shRepeat ? "1" : "0"); }catch(e){}
+    shPaintAuto();
+  });
+  shBind("shadvdn", function(){ shSetAdvIndex(shStepIndex(shAdv) - 1); });
+  shBind("shadvup", function(){ shSetAdvIndex(shStepIndex(shAdv) + 1); });
+  shBind("shagain", function(){ shBuild(); shNext(); });
+  if (shq) shq.addEventListener("input", function(){
+    // Debounced, because a rebuild starts a video: without this every keystroke
+    // would fire loadVideoById, which is the expensive path and the one with
+    // known flakiness. The count updates immediately so the box still feels
+    // live while the order waits for you to stop typing.
+    shCount(shPool().length, -1);
+    if (shWait) clearTimeout(shWait);
+    shWait = setTimeout(function(){
+      shWait = null;
+      var started = shPos >= 0;
+      shBuild();
+      // Only jumps if something was already playing. Changing the filter is a
+      // request for a different pool, so it resets the order and plays from the
+      // top of the new one.
+      if (shOrder.length && started) shNext();
+    }, 500);
+  });
+
   wrap.hidden = false;
   paint();
 });
@@ -754,7 +1346,10 @@ guard("samevod", function(){
   // seeking works. Read live rather than captured, since the mode can change
   // after this block has run.
   function appMode(){
-    return document.documentElement.getAttribute("data-play") !== "here";
+    var m = document.documentElement.getAttribute("data-play");
+    // Shuffle plays in the page exactly as "here" does, so no app is involved
+    // and this notice would be nonsense there too.
+    return m !== "here" && m !== "shuffle";
   }
   var KEY = "songlist-last-vod";
   // sessionStorage, not localStorage: "might still be playing" is a guess that
