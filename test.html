@@ -413,13 +413,28 @@
     #shtr button#shrepeat{right:0}
     #shnow{height:88px}
     #shnow .s{font-size:16px}
-    #shauto{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
-    /* display:contents dissolves the aside so repeat and the countdown wrap
-       INDEPENDENTLY. As one flex item they moved together, which pushed both
-       onto a second line and cost 52px; separated, repeat joins the stepper it
-       modifies and only the countdown wraps. */
+    /* Two lines on a phone: the stepper alone on the first, the label and the
+       countdown on the second. That is what lets the stepper centre on the PLAY
+       BUTTON. Centring a flex line centres its GROUP, so an 80px label sharing
+       the line with a 172px stepper pushed the stepper 19px off the play
+       button's axis; moving the label off the line removes the imbalance, and
+       repeat is taken out of flow so it cannot reintroduce one.
+       display:contents dissolves the aside first, so repeat and the countdown
+       are independent items that can be ordered and wrapped separately. */
+    #shauto{position:relative;display:flex;flex-wrap:wrap;
+            justify-content:center;gap:8px}
     #shauto .aside{display:contents}
-    #shleft{min-width:0}
+    #shauto .step{order:1}
+    /* An explicit line break. Ordering alone was not enough: stepper + label +
+       countdown measure 337px inside a 349px row, so they all FIT on one line
+       and the label simply moved sideways, shoving the stepper 83px off the
+       play button -- worse than the 19px it was meant to fix. A zero-height
+       flex-basis:100% pseudo-element between order 1 and order 3 forces the
+       wrap regardless of how much room is left. */
+    #shauto::after{content:"";order:2;flex-basis:100%;height:0;margin:-4px 0}
+    #shauto .albl{order:3}
+    #shleft{order:4;min-width:0}
+    #shrepeat{order:5;position:absolute;right:0;top:0}
     #shq{flex:1 1 100%}
   }
 </style>
@@ -1127,9 +1142,19 @@ guard("playopt", function(){
     // but "repeat" is exactly what happens.
     var show = shAdv && shPos >= 0 && (shRepeat || !shAtEnd());
     // A frozen "next in 0:00" would read as broken, so the hold explains itself.
+    // Wording went through three passes. "from next song" read as "advancing
+    // from the next song"; naming the subject as "applies FROM next song" only
+    // moved the ambiguity to the preposition, since "from" (onward) and "to"
+    // (that one song) are both plausible readings of a setting change. "takes
+    // effect next song" has no preposition to misread.
     if (left) left.textContent = !show ? ""
-      : shHold ? "from next song"
+      : shHold ? "takes effect next song"
       : ((shRepeat ? "repeat in " : "next in ") + shFmt(shLeft));
+    // The colon only earns its place when something follows it on the line,
+    // which on a phone is the countdown sitting beside the label.
+    var albl = document.querySelector("#shauto .albl");
+    if (albl) albl.textContent = (left && left.textContent)
+      ? "Auto-advance:" : "Auto-advance";
   }
   // How long THIS performance has already run, asked of the player rather than
   // tracked in a counter of our own. A counter would not have been running
