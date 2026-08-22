@@ -328,11 +328,8 @@
   /* Nothing to seek within -- no end resolved and no duration yet. Inert
      rather than absent, so the row does not change height. */
   #shseek.off{opacity:.35;pointer-events:none}
-  #shleft{grid-column:3;grid-row:2;justify-self:start;min-height:19px;
-          font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums;
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   /* Phones only, so on a desktop this cell is empty and row 4 has no height. */
-  #boopen{grid-column:2;grid-row:4;justify-self:center}
+  #boopen{grid-column:2;grid-row:3;justify-self:center}
   #shbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
   #shcount{color:var(--dim);font-size:13px;white-space:nowrap}
   #shend{display:none;background:var(--chip);border:1px solid var(--line);
@@ -517,9 +514,7 @@
        occupy. Both are real grid cells rather than the absolutely positioned
        pair this row needed while a stepper sat between them. */
     #shseek{grid-column:1/-1;grid-row:2;width:auto;margin:8px 0 0}
-    #shleft{grid-column:1/-1;grid-row:3;justify-self:center;text-align:center;
-            margin:6px 0 10px}
-    #shrepeat{grid-column:3;grid-row:4;justify-self:end}
+    #shrepeat{grid-column:3;grid-row:3;justify-self:end}
     #boopen{padding:9px 14px}
     /* The h1 and the coverage line go, so Play Options is at the very top and
        the mode fits an 812px screen with the scrub bar added. This REVERSES
@@ -665,7 +660,6 @@
              ><div id="shknob"></div></div>
         <span class="t r" id="shto"></span>
       </div>
-      <div id="shleft"></div>
       <button type="button" id="boopen" hidden>Blackout Screen</button>
     </div>
 
@@ -1500,30 +1494,13 @@ guard("playopt", function(){
   // time remaining. The same clock that fires it arms it, and there is no
   // timeout to guess at.
   var shArmed = false;
-  function shPaintLeft(){
-    var el = shBy("shleft");
-    if (!el) return;
-    var left = (mode === "shuffle" && shPos >= 0) ? shRemaining() : null;
-
-    // "next song in" is a promise, so it is not made at the end of the list,
-    // where there is nothing to advance TO -- the old countdown sat at
-    // "next in 0:00" there indefinitely, which is the bug this avoids. Repeat
-    // keeps it alive there, because repeating is exactly what does happen.
-    // Blank only when nothing follows: at the end of the list with repeat off
-    // there is nothing to advance TO, and a running countdown there is a
-    // promise it cannot keep. Repeat-list wraps, so something does follow.
-    el.textContent = (left == null || (shAtEnd() && shRep === "")) ? ""
-      : ((shRep === "one" ? "repeat in " : "next song in ") + shFmt(left));
-    boPaint();
-  }
-  // Absolute VOD time, h:mm:ss -- what the bar's labels show. Deliberately the
-  // real timestamp rather than elapsed-within-the-song, so a moment read off
-  // the bar matches what a comment link or the setlist says about it.
-  function shHMS(s){
-    s = Math.max(0, Math.round(s));
-    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
-    return h + ":" + (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
-  }
+  // There is no countdown any more. It said "next song in 2:41", which the
+  // scrub bar now says better and continuously -- elapsed against total, with
+  // the position visible rather than arithmetic you do in your head. Two
+  // readouts of the same fact is one to keep in step, and the countdown was
+  // the one that could disagree with what you were looking at.
+  //
+  // `shRemaining()` stays: the WATCHDOG needs it. Only the display went.
   // The span the bar covers: this performance only, never the whole video.
   // A standalone upload has no marked end, so its own duration IS the end.
   function shSpan(){
@@ -1538,6 +1515,16 @@ guard("playopt", function(){
     return (to != null && to > from) ? {from: from, to: to} : null;
   }
   var shDragging = false;
+  // Where a seek asked to go, and how many ticks to keep believing it over the
+  // player. A seek does not land instantly: for a second or so afterwards
+  // getCurrentTime still reports the position it had BEFORE, so the 1Hz repaint
+  // drags the knob back to where you grabbed it and then jumps forward when the
+  // seek finally lands. Painting the requested position until the player agrees
+  // -- the same shape as the review player's `primed` gate, which exists
+  // because audio started before the video had reached its cue.
+  // The counter is the escape hatch: if a seek never lands, the bar must follow
+  // the player again rather than lie about where it is forever.
+  var shSeekWant = null, shSeekHold = 0;
   function shPaintSeek(){
     var wrap = shBy("shseek"), track = shBy("shtrack"), fill = shBy("shfill"),
         knob = shBy("shknob"), a = shBy("shat"), b = shBy("shto");
@@ -1551,19 +1538,29 @@ guard("playopt", function(){
       return;
     }
     wrap.classList.remove("off");
-    if (b) b.textContent = shHMS(sp.to);
+    // Elapsed and total, counting from the performance's own start -- 0:00 to
+    // 3:32 rather than the VOD's 1:52:02 to 1:55:28. The absolute times were
+    // tried first and read as clutter: the bar is for moving inside a song,
+    // and where that song sits in a four-hour stream is not what you are
+    // asking it while you do that.
+    if (b) b.textContent = shFmt(sp.to - sp.from);
     if (shDragging) return;              // the finger owns the knob
     var at = shClock();
     if (at == null) at = sp.from;
+    if (shSeekWant != null){
+      if (Math.abs(at - shSeekWant) < 1.5 || shSeekHold <= 0) shSeekWant = null;
+      else { at = shSeekWant; shSeekHold--; }
+    }
     at = Math.max(sp.from, Math.min(sp.to, at));
     var pct = ((at - sp.from) / (sp.to - sp.from)) * 100;
     if (fill) fill.style.width = pct.toFixed(2) + "%";
     if (knob) knob.style.left = pct.toFixed(2) + "%";
-    if (a) a.textContent = shHMS(at);
-    track.setAttribute("aria-valuemin", Math.round(sp.from));
-    track.setAttribute("aria-valuemax", Math.round(sp.to));
-    track.setAttribute("aria-valuenow", Math.round(at));
-    track.setAttribute("aria-valuetext", shHMS(at));
+    if (a) a.textContent = shFmt(at - sp.from);
+    track.setAttribute("aria-valuemin", 0);
+    track.setAttribute("aria-valuemax", Math.round(sp.to - sp.from));
+    track.setAttribute("aria-valuenow", Math.round(at - sp.from));
+    track.setAttribute("aria-valuetext", shFmt(at - sp.from) + " of " +
+                       shFmt(sp.to - sp.from));
   }
   // Clamped to the performance at both ends, which is the whole point: you
   // cannot drag out of the song and into the stream around it.
@@ -1573,6 +1570,7 @@ guard("playopt", function(){
     f = Math.max(0, Math.min(1, f));
     var t = sp.from + f * (sp.to - sp.from);
     try{ if (player.seekTo) player.seekTo(t, true); }catch(e){}
+    shSeekWant = t; shSeekHold = 6;
     // A seek moves the clock, and the queue advances on a clock that has
     // stopped at the mark -- so without disarming, dragging to the end and
     // pausing to listen would advance out from under you. It re-arms on its
@@ -1582,8 +1580,7 @@ guard("playopt", function(){
     var pct = (f * 100).toFixed(2) + "%";
     if (fill) fill.style.width = pct;
     if (knob) knob.style.left = pct;
-    if (a) a.textContent = shHMS(t);
-    shPaintLeft();
+    if (a) a.textContent = shFmt(t - sp.from);
   }
   function shFracFromX(x){
     var track = shBy("shtrack");
@@ -1608,7 +1605,6 @@ guard("playopt", function(){
   // not move. It is also why this sits in the ticker and not in the painter:
   // shLoad paints, so a watchdog inside the painter would re-enter.
   function shTick(){
-    shPaintLeft();
     shPaintSeek();
     if (mode !== "shuffle" || shPos < 0) return;
     // Deliberately NOT gated on the player reporting PLAYING. That gate looks
@@ -1683,7 +1679,7 @@ guard("playopt", function(){
   }
   // Repeat changes what the countdown is counting TOWARDS, so the two are
   // always painted together rather than waiting up to a second for the tick.
-  function shPaintState(){ shPaintRepeat(); shPaintLeft(); shPaintSeek(); }
+  function shPaintState(){ shPaintRepeat(); shPaintSeek(); }
   // How long THIS performance has already run, asked of the player rather than
   // tracked in a counter of our own. A counter would not have been running
   // while auto-advance was off, which is precisely the case this exists for.
@@ -1775,7 +1771,7 @@ guard("playopt", function(){
     // the pool is made of -- so every performance moves the queue on by
     // finishing, and nothing moves it on for any other reason.
     if (mode !== "shuffle" || shPos < 0) return;
-    shPaintLeft();
+    shPaintSeek();
     if (shState() === 0){ shArmed = false; shAdvance(); }
   }
   function shEnter(){
@@ -1897,8 +1893,12 @@ guard("playopt", function(){
       var b = boBy(pair[0]), r = boBy(pair[1]);
       if (b && r) b.disabled = r.disabled;
     });
-    var bl = boBy("boleft"), sl = boBy("shleft");
-    if (bl && sl) bl.textContent = sl.textContent;
+    // The panel has no scrub bar of its own -- it is built to be used without
+    // looking -- so it would have lost its only sense of progress when the
+    // countdown went. It mirrors the bar's two labels instead.
+    var bl = boBy("boleft"), a = boBy("shat"), t = boBy("shto");
+    if (bl) bl.textContent = (a && t && a.textContent && t.textContent)
+      ? (a.textContent + " / " + t.textContent) : "";
     var br = boBy("borepeat"), sr = boBy("shrepeat");
     if (br && sr){
       // The icon is what distinguishes repeat-list from repeat-one, so mirror
