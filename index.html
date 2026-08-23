@@ -1317,7 +1317,13 @@ guard("playopt", function(){
   // "" off, "list" wrap round at the end, "one" replay this performance.
   // The two on-states are genuinely different features and the old boolean was
   // the second of them, so what used to be "repeat" is now "one".
-  var shOrder = [], shPos = -1, shRep = "";
+  // shPos is a position in the CURRENT order; shCur is the entry actually
+  // loaded. They were the same thing until the filter stopped interrupting
+  // playback -- narrowing the pool rebuilds the order under a performance that
+  // keeps playing, and that performance may not be in the new order at all.
+  // Everything asking "what is playing" reads shCur; only navigation reads
+  // shPos.
+  var shOrder = [], shPos = -1, shCur = null, shRep = "";
   var SH_REP_NEXT = {"": "list", "list": "one", "one": ""};
   // A performance always stops where it was marked to. There was a toggle for
   // this, and it stopped making sense once the pool became "performances with a
@@ -1527,7 +1533,13 @@ guard("playopt", function(){
     // Enabled at the first entry too, now that Prev restarts rather than only
     // stepping back -- there it always has something to do. Only a shuffle with
     // nothing loaded leaves it dead. Next still disables itself in shShowEnd.
-    if (pv) pv.disabled = (shPos < 0);
+    //
+    // Keyed on what is PLAYING, not on the queue position. Those differ once a
+    // filter can rebuild the order under a running performance: shPos goes to
+    // -1 when the filter excludes it, and keying on that disabled Prev while a
+    // song was audibly playing -- so the restart it exists for was unreachable
+    // by the one gesture that asks for it.
+    if (pv) pv.disabled = !shCur;
   }
   // How long this performance has left, asked of the player's own clock rather
   // than counted down in a variable of our own. Pausing therefore freezes it
@@ -1554,7 +1566,7 @@ guard("playopt", function(){
     catch(e){ return null; }
   }
   function shRemaining(){
-    var e = shOrder[shPos];
+    var e = shCur;
     if (!e) return null;
     try{
       var at = player.getCurrentTime();
@@ -1611,7 +1623,7 @@ guard("playopt", function(){
   // The span the bar covers: this performance only, never the whole video.
   // A standalone upload has no marked end, so its own duration IS the end.
   function shSpan(){
-    var e = shOrder[shPos];
+    var e = shCur;
     if (!e) return null;
     var from = secsOf(e.href || ""), to = shEndFor(e);
     if (to == null){
@@ -1636,7 +1648,7 @@ guard("playopt", function(){
     var wrap = shBy("shseek"), track = shBy("shtrack"), fill = shBy("shfill"),
         knob = shBy("shknob"), a = shBy("shat"), b = shBy("shto");
     if (!wrap || !track) return;
-    var sp = (mode === "shuffle" && shPos >= 0) ? shSpan() : null;
+    var sp = (mode === "shuffle" && shCur) ? shSpan() : null;
     if (!sp){
       wrap.classList.add("off");
       if (fill) fill.style.width = "0%";
@@ -1720,7 +1732,7 @@ guard("playopt", function(){
   // shLoad paints, so a watchdog inside the painter would re-enter.
   function shTick(){
     shPaintSeek();
-    if (mode !== "shuffle" || shPos < 0) return;
+    if (mode !== "shuffle" || !shCur) return;
     // Deliberately NOT gated on the player reporting PLAYING. That gate looks
     // prudent and defeats the whole purpose: the case this exists for is a
     // player that stopped at the end WITHOUT reporting ENDED, and a player
@@ -1800,7 +1812,7 @@ guard("playopt", function(){
   // Guarded both ways: negative if the viewer scrubbed back before the song
   // started, absurd if the player is between videos.
   function shPlayed(){
-    var e = shOrder[shPos];
+    var e = shCur;
     if (!e) return 0;
     try{
       var d = player.getCurrentTime() - secsOf(e.href || "");
@@ -1811,6 +1823,7 @@ guard("playopt", function(){
     if (i < 0 || i >= shOrder.length) return;
     shPos = i;
     var e = shOrder[i], href = e.href || "", v = vidOf(href);
+    shCur = e;
     shArmed = false;
     shLastAt = null;
     shPaintNow(e);
@@ -1848,7 +1861,10 @@ guard("playopt", function(){
   // the first one left the playhead at the start.
   var PREV_RESTART = 3;
   function shPrev(){
-    if (shPos < 0) return false;
+    // shPos < 0 means the playing performance is not in the current order --
+    // filtered out from under it. There is nowhere to step back TO, but
+    // restarting what is playing is still the right answer.
+    if (shPos < 0){ shReplay(); return false; }
     // At the first entry there is nowhere back to go, so Prev always restarts.
     if (shPos === 0 || shPlayed() > PREV_RESTART){ shReplay(); return false; }
     shShowEnd(false);
@@ -1859,7 +1875,7 @@ guard("playopt", function(){
   // seeks rather than reloading, so a repeat costs no fresh load and rolls no
   // fresh ad -- the same reason same-stream taps are the reliable path.
   function shReplay(){
-    var e = shOrder[shPos];
+    var e = shCur;
     if (!e) return;
     var href = e.href || "", v = vidOf(href);
     if (!v) return;
@@ -1884,9 +1900,36 @@ guard("playopt", function(){
     // reached and when a standalone video runs out, which are the two things
     // the pool is made of -- so every performance moves the queue on by
     // finishing, and nothing moves it on for any other reason.
-    if (mode !== "shuffle" || shPos < 0) return;
+    if (mode !== "shuffle" || !shCur) return;
     shPaintSeek();
     if (shState() === 0){ shArmed = false; shAdvance(); }
+  }
+  // Is the player already on a performance in the pool? Switching to "play
+  // here" does not stop playback, so coming back to shuffle while a song is
+  // still running should JOIN it rather than reshuffle and start something
+  // else -- which is what it did, and it lost your place every time you looked
+  // something up.
+  //
+  // The state gate is what separates that from the "Open in YouTube" case,
+  // which DOES stop the player: stopVideo leaves the video data readable, so
+  // the id alone would say a stopped song was still playing. Only PLAYING,
+  // PAUSED and BUFFERING count as something to join.
+  //
+  // The window is the same one shRemaining uses, and it earns its place here
+  // too: it identifies WHICH performance is playing when a stream holds
+  // several, where the video id alone cannot.
+  function shAdopt(){
+    var st = shState();
+    if (st !== 1 && st !== 2 && st !== 3) return -1;
+    var v = shVideoNow(), at = shClock();
+    if (!v || at == null) return -1;
+    for (var i = 0; i < shOrder.length; i++){
+      var e = shOrder[i], href = e.href || "";
+      if (vidOf(href) !== v) continue;
+      var from = secsOf(href), stop = (e.end != null) ? e.end : from + 86400;
+      if (at >= from - 5 && at <= stop + 60) return i;
+    }
+    return -1;
   }
   function shEnter(){
     if (!shPanel) return;
@@ -1895,12 +1938,28 @@ guard("playopt", function(){
     if (shq && qbox) shq.value = qbox.value;
     shListOpen = false;
     shPaintList();
-    shBuild();
-    shPaintState();
-    // Display only: it paints the countdown and advances nothing. Restarted
+    // Display only: it paints the scrub bar and advances nothing. Restarted
     // here rather than left running, so a page sitting in another mode is not
     // ticking against a player it does not own.
     if (!shTimer) shTimer = setInterval(shTick, 1000);
+    // The ORDER survives a mode switch, so rebuild only when there is not one
+    // -- reshuffling here is what threw away the queue you were part-way
+    // through.
+    if (!shOrder.length) shBuild();
+    var at = shAdopt();
+    if (at >= 0){
+      shPos = at;
+      shCur = shOrder[at];
+      shShowEnd(false);
+      shPaintNow(shCur);
+      shCount();
+      shPaintNav();
+      shPaintPlay();
+      shPaintState();
+      return;
+    }
+    shBuild();
+    shPaintState();
     if (shOrder.length) shNext();
     else { shPaintNow(null); shPaintPlay(); }
   }
@@ -2141,6 +2200,17 @@ guard("playopt", function(){
   // there. Matching on href is what makes this exact: it carries both the video
   // and the timestamp, so two outings of one song in the same stream cannot be
   // confused for each other.
+  // Where an entry sits in the CURRENT order, or -1. Matching on href is what
+  // makes it exact: it carries both the video and the timestamp, so two outings
+  // of one song in the same stream cannot be confused for each other.
+  function shIndexOf(e){
+    if (!e) return -1;
+    var href = e.href || "";
+    for (var i = 0; i < shOrder.length; i++){
+      if ((shOrder[i].href || "") === href) return i;
+    }
+    return -1;
+  }
   function shJumpTo(href){
     for (var i = 0; i < shOrder.length; i++){
       if ((shOrder[i].href || "") === href){
@@ -2178,23 +2248,30 @@ guard("playopt", function(){
   shBind("shlist", function(){ shListOpen = !shListOpen; shPaintList(); });
   shBind("shagain", function(){ shBuild(); shNext(); });
   if (shq) shq.addEventListener("input", function(){
-    // Debounced, because a rebuild starts a video: without this every keystroke
-    // would fire loadVideoById, which is the expensive path and the one with
-    // known flakiness. The count updates immediately so the box still feels
-    // live while the order waits for you to stop typing.
+    // Typing NEVER changes what is playing. Filtering narrows what comes next;
+    // it is not a request to jump, and treating it as one meant the video
+    // changed on every pause in typing -- reported as the song restarting
+    // letter by letter.
+    //
+    // So the order is rebuilt underneath the performance and nothing is
+    // loaded. If that performance is in the new order, shPos re-points at it
+    // and Next carries on from there; if the filter excluded it, shPos goes to
+    // -1 and the next advance starts at the top of the new pool. Either way it
+    // plays to its own end first.
     shCount(shPool().length);
-    // Immediately, not on the debounce: the debounce exists because rebuilding
-    // the ORDER starts a video, and filtering the table costs nothing.
     if (shListOpen) shSyncTable();
     if (shWait) clearTimeout(shWait);
+    // Still debounced, but only to save rebuilding a 1000-entry order on every
+    // keystroke -- no longer because a rebuild could start a video.
     shWait = setTimeout(function(){
       shWait = null;
-      var started = shPos >= 0;
+      var playing = shCur;
       shBuild();
-      // Only jumps if something was already playing. Changing the filter is a
-      // request for a different pool, so it resets the order and plays from the
-      // top of the new one.
-      if (shOrder.length && started) shNext();
+      shPos = shIndexOf(playing);
+      shPaintNav();
+      shCount();
+      // Nothing loads here. If nothing was playing at all, the first Play or
+      // Next starts the new pool from the top on its own.
     }, 500);
   });
 
