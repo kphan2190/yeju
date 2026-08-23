@@ -82,7 +82,10 @@
   th{text-align:left;font-size:13px;font-weight:500;color:var(--head);
      padding:9px 8px;border-bottom:1px solid var(--line);
      position:sticky;background:var(--bg);z-index:5;
-     top:calc(var(--playerh,0px) + var(--barh,0px));
+     /* --shstack is the shuffle strips added up, and 0 in the other two modes,
+        where --barh is the filter bar instead. One of the two is always zero,
+        so this is the same rule in both. */
+     top:calc(var(--playerh,0px) + var(--barh,0px) + var(--shstack,0px));
      cursor:pointer;user-select:none;white-space:nowrap}
   th .ar{color:var(--accent);font-size:11px;margin-left:4px;opacity:0}
   th.on .ar{opacity:1}
@@ -222,11 +225,47 @@
   /* The coverage line STAYS. It belongs to the page identity under the h1, not
      to the table, and hiding it made shuffle the one mode with a different
      header -- the only inconsistency left across the three options. */
+  /* The .bar stays hidden in shuffle whatever the list is doing -- shuffle has
+     its own search box, and two filter inputs on one screen is a question about
+     which one is in force. The TABLE is revealed by data-list, which only the
+     disclosure below sets. */
   :root[data-play="shuffle"] .bar,
   :root[data-play="shuffle"] table,
   :root[data-play="shuffle"] #none{display:none}
+  :root[data-play="shuffle"][data-list="on"] table{display:table}
+  :root[data-play="shuffle"][data-list="on"] #none{display:block}
+  /* Butts against the player, with the filter directly under it and the column
+     headers under that. Each has to know the height of what is above -- see
+     fitSticky, which measures rather than assumes, because the player varies
+     with the viewport through its 50vh cap.
+     The opaque background is not decoration: without it the table scrolls
+     through them. */
+  /* No outline. It carries as a control on accent colour and weight alone,
+     which is not the failure this page has had twice -- that was a hairline
+     --line box holding --dim labels on --chip, three near-identical greys, and
+     the greys were the problem rather than the absent border. min-height keeps
+     the 44px tap target now the 2px border is not part of it. */
+  #shlist{display:none;width:100%;margin:0 0 12px;background:var(--bg);
+        position:sticky;z-index:6;top:var(--playerh,0px);
+        border:0;color:var(--accent);border-radius:9px;
+        font:inherit;font-size:13px;font-weight:600;padding:10px 16px;
+        cursor:pointer;min-height:44px}
+  :root[data-play="shuffle"] #shlist{display:block}
+  #shfind{display:none;margin:0 0 12px;position:sticky;z-index:6;
+        background:var(--bg);
+        top:calc(var(--playerh,0px) + var(--listh,0px))}
+  :root[data-play="shuffle"][data-list="on"] #shfind{display:block}
+  #shfind input{width:100%}
+  /* display:CONTENTS, not block, and that is what makes the strips below able
+     to stick. A sticky element can only stick within its own parent's box, and
+     as a block this wrapper is about 500px tall and scrolls away long before
+     the table does -- so the transport, the search bar and Show List went with
+     it however they were positioned. Dissolving the wrapper makes them direct
+     children of .wrap, whose box spans the whole page including the table.
+     Safe because this element carries nothing but display: no background, no
+     padding, no border to lose. The same trick #shrow1 uses on a phone. */
   #shuffle{display:none}
-  :root[data-play="shuffle"] #shuffle{display:block}
+  :root[data-play="shuffle"] #shuffle{display:contents}
   /* FIXED height, not min-height, and the reason is the whole point of this
      mode: the transport sits directly under this block and gets tapped over
      and over, so if the block grows with the title then Next moves under your
@@ -259,6 +298,12 @@
      their colour from currentColor so both themes work with no extra rules. */
   /* The grid that gives desktop and phone their two layouts. Columns and rows
      are named on every child -- see the markup note. */
+  /* NOT sticky. The transport and the scrub bar scroll away with the
+     now-playing block, and only the search bar and Show List follow the player
+     down. Pinning these too was tried and measured: the stack reached 621px of
+     a 1280x800 screen and left TWO rows of list visible, which is not a list.
+     The transport is also the thing you least need while reading -- you are
+     looking for a song, not working the controls. */
   #shctrl{display:grid;grid-template-columns:1fr auto 1fr;gap:0 10px;
         align-items:center;margin:0 0 14px}
   #shrow1{grid-column:2;grid-row:1;display:flex;align-items:center;
@@ -330,7 +375,10 @@
   #shseek.off{opacity:.35;pointer-events:none}
   /* Phones only, so on a desktop this cell is empty and row 4 has no height. */
   #boopen{grid-column:2;grid-row:3;justify-self:center}
-  #shbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+  /* Just the count now, and NOT sticky -- it is one line of passive text that
+     belongs with the controls above it, not with the list below. */
+  #shbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+        justify-content:center;margin:0 0 12px}
   #shcount{color:var(--dim);font-size:13px;white-space:nowrap}
   #shend{display:none;background:var(--chip);border:1px solid var(--line);
          border-radius:10px;padding:16px;text-align:center;margin:0 0 12px}
@@ -534,7 +582,6 @@
     /* Centred under the search box. It sat left-aligned on its own line, which
        is what read as awkward; on a desktop it stays inline to the right. */
     #shcount{flex:1 1 100%;text-align:center}
-    #shq{flex:1 1 100%}
   }
 
   /* Every hover style on this page lives in here, and that is a MOBILE
@@ -561,6 +608,9 @@
         border-color:var(--accent)}
   #shrepeat:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
   #shend button:hover{background:var(--accent);color:var(--bg)}
+  /* A tint, not a fill: with no border, filling the full width with accent is
+     a slab across the page rather than a button lighting up. */
+  #shlist:hover{background:var(--hover2)}
   #bounlock:hover{border-color:#e9e9e6}
   #boopen:hover{border-color:var(--accent);color:var(--accent)}
   }
@@ -669,10 +719,24 @@
       <button type="button" id="boopen" hidden>Blackout Screen</button>
     </div>
 
-    <div id="shbar">
+    <!-- The count is shuffle's position indicator, so it stays out of the
+         disclosure and is readable with the list closed. The filter input went
+         in with the list because that is the only place it can be judged --
+         typing into it while nothing is shown changes a number and nothing
+         else. -->
+    <div id="shbar"><span class="count" id="shcount"></span></div>
+    <!-- The songlist itself, collapsed by default. Shuffle's filter box is
+         hard to use blind: you type and a count changes, with no way to see
+         what you narrowed to. Showing the table answers that without spending
+         any of the space the mode is built around, because it is closed until
+         asked for. Full width and its own line, below the search bar it
+         explains. -->
+    <button type="button" id="shlist" aria-expanded="false">Show List</button>
+    <!-- Revealed with the table and sticky directly above its column headers,
+         so it stays reachable however far down the list you have scrolled. -->
+    <div id="shfind">
       <input type="search" id="shq" placeholder="Filter by song, artist or stream"
              autocomplete="off">
-      <span class="count" id="shcount"></span>
     </div>
     <div id="shend">
       <p>You&rsquo;ve reached the end.</p>
@@ -961,6 +1025,20 @@ guard("playopt", function(){
     // The bar wraps to two rows on a phone, so its height is a measurement too,
     // not a constant.
     if (bar) root.style.setProperty("--barh", bar.offsetHeight + "px");
+    // The shuffle strips. offsetHeight is 0 for anything display:none, so in
+    // the other two modes these all read 0 and the header falls back to the
+    // filter bar's offset with no mode test anywhere.
+    var slist = document.getElementById("shlist"),
+        find = document.getElementById("shfind");
+    var lh = slist ? slist.offsetHeight : 0,
+        fh = find ? find.offsetHeight : 0;
+    root.style.setProperty("--listh", lh + "px");
+    // Only the two that actually pin. The transport, the scrub bar and the
+    // count are all in the flow and must NOT be counted, or the column headers
+    // would sit that much below where the filter ends. offsetHeight is 0 for
+    // anything display:none, so the filter contributes nothing while the list
+    // is closed and the header lands directly under Show List.
+    root.style.setProperty("--shstack", (lh + fh) + "px");
   }
   window.addEventListener("resize", fitSticky);
   // Measuring on the tap alone is not enough: the API builds its iframe some
@@ -1200,12 +1278,27 @@ guard("playopt", function(){
   // popup blocking, no swallowed taps. The href is never rewritten either, so a
   // long-press still offers "Open in YouTube" in both modes.
   document.addEventListener("click", function(ev){
-    if (mode !== "here") return;
+    if (mode !== "here" && mode !== "shuffle") return;
     var a = ev.target.closest && ev.target.closest("a[href]");
     if (!a) return;
     var href = a.getAttribute("href") || "", v = vidOf(href);
     if (!v) return;
     ev.preventDefault();
+    // In shuffle the list is a way to PICK, so a tap moves the queue to that
+    // performance rather than playing it beside the queue. Anything else makes
+    // Prev and Next lie: they would step through an order that no longer has
+    // any relation to what you are hearing.
+    //
+    // Opening YouTube -- which is what an untouched anchor does, and what this
+    // did before the list could be shown here -- is the one clearly wrong
+    // answer in a mode built around an in-page player and a queue.
+    if (mode === "shuffle"){
+      if (shJumpTo(href)) return;
+      // Not in the pool (no marked end), so the queue cannot hold it. Play it
+      // anyway rather than doing nothing, and leave the queue where it was.
+      play(v, secsOf(href));
+      return;
+    }
     play(v, secsOf(href));
     // "nearest" is a no-op when the player is already on screen, which it
     // always is on a phone, where it is sticky.
@@ -1792,6 +1885,8 @@ guard("playopt", function(){
     // The filter travels BOTH ways: narrowing the table and then shuffling
     // keeps what you narrowed to, and coming back out keeps it too.
     if (shq && qbox) shq.value = qbox.value;
+    shListOpen = false;
+    shPaintList();
     shBuild();
     shPaintState();
     // Display only: it paints the countdown and advances nothing. Restarted
@@ -1803,6 +1898,10 @@ guard("playopt", function(){
   }
   function shLeave(){
     boExit();
+    // Closed on the way out, so entering shuffle always starts from the same
+    // shape rather than from whatever the last visit left behind.
+    shListOpen = false;
+    root.removeAttribute("data-list");
     if (shTimer){ clearInterval(shTimer); shTimer = null; }
     if (shWait){ clearTimeout(shWait); shWait = null; }
     if (shq && qbox && qbox.value !== shq.value){
@@ -2030,6 +2129,45 @@ guard("playopt", function(){
       shSeekFrac((to - sp.from) / span);
     });
   })();
+  // Find a performance in the current order by its link and play it from
+  // there. Matching on href is what makes this exact: it carries both the video
+  // and the timestamp, so two outings of one song in the same stream cannot be
+  // confused for each other.
+  function shJumpTo(href){
+    for (var i = 0; i < shOrder.length; i++){
+      if ((shOrder[i].href || "") === href){
+        shShowEnd(false);
+        shLoad(i);
+        return true;
+      }
+    }
+    return false;
+  }
+  // Show List / Hide List. Collapsed on entry every time and NOT remembered,
+  // for the same reason shuffle itself is not: it is an activity rather than a
+  // preference, and the mode's whole shape assumes the list is away.
+  var shListOpen = false;
+  function shPaintList(){
+    var b = shBy("shlist");
+    if (!b) return;
+    b.textContent = shListOpen ? "Hide List" : "Show List";
+    b.setAttribute("aria-expanded", shListOpen ? "true" : "false");
+    if (shListOpen) root.setAttribute("data-list", "on");
+    else root.removeAttribute("data-list");
+    // The table's own filter lives in another guard() block, so it is told
+    // through the DOM rather than called into -- one block throwing still
+    // cannot take the other down. Without this the revealed table would show
+    // everything while the count above it claimed a narrower pool.
+    shSyncTable();
+    fitSticky();
+  }
+  function shSyncTable(){
+    if (!shq || !qbox) return;
+    if (qbox.value === shq.value) return;
+    qbox.value = shq.value;
+    try{ qbox.dispatchEvent(new Event("input")); }catch(e){}
+  }
+  shBind("shlist", function(){ shListOpen = !shListOpen; shPaintList(); });
   shBind("shagain", function(){ shBuild(); shNext(); });
   if (shq) shq.addEventListener("input", function(){
     // Debounced, because a rebuild starts a video: without this every keystroke
@@ -2037,6 +2175,9 @@ guard("playopt", function(){
     // known flakiness. The count updates immediately so the box still feels
     // live while the order waits for you to stop typing.
     shCount(shPool().length, -1);
+    // Immediately, not on the debounce: the debounce exists because rebuilding
+    // the ORDER starts a video, and filtering the table costs nothing.
+    if (shListOpen) shSyncTable();
     if (shWait) clearTimeout(shWait);
     shWait = setTimeout(function(){
       shWait = null;
