@@ -513,7 +513,13 @@
        always had and Blackout takes the middle one the end toggle used to
        occupy. Both are real grid cells rather than the absolutely positioned
        pair this row needed while a stepper sat between them. */
-    #shseek{grid-column:1/-1;grid-row:2;width:auto;margin:8px 0 0}
+    /* 18px below to match the 18px above (the transport's 10px bottom margin
+       plus this element's 8px top). Blackout and repeat sat flush against the
+       track, close enough that a thumb reaching for one could catch the other
+       -- and the track is a drag target, so a mis-hit there moves the song.
+       Both buttons share grid row 3, so one margin moves the pair and they
+       stay aligned with each other. */
+    #shseek{grid-column:1/-1;grid-row:2;width:auto;margin:8px 0 18px}
     #shrepeat{grid-column:3;grid-row:3;justify-self:end}
     #boopen{padding:9px 14px}
     /* The h1 and the coverage line go, so Play Options is at the very top and
@@ -1535,6 +1541,7 @@ guard("playopt", function(){
       if (fill) fill.style.width = "0%";
       if (knob) knob.style.left = "0%";
       if (a) a.textContent = ""; if (b) b.textContent = "";
+      boPaint();
       return;
     }
     wrap.classList.remove("off");
@@ -1561,6 +1568,12 @@ guard("playopt", function(){
     track.setAttribute("aria-valuenow", Math.round(at - sp.from));
     track.setAttribute("aria-valuetext", shFmt(at - sp.from) + " of " +
                        shFmt(sp.to - sp.from));
+    // The blackout panel mirrors these labels and has no clock of its own, so
+    // this call is what keeps it live. The countdown used to make it -- when
+    // that display went, the panel silently froze at whatever it read when the
+    // screen went black, and a timer that stops while the audio keeps playing
+    // is worse than no timer at all.
+    boPaint();
   }
   // Clamped to the performance at both ends, which is the whole point: you
   // cannot drag out of the song and into the stream around it.
