@@ -1816,30 +1816,28 @@ guard("playopt", function(){
     var el = shBy(id);
     if (el) el.addEventListener("click", fn);
   }
-  // Pressing Prev or Next is a decision to move ON from this performance, which
-  // is the opposite of what repeat asks for -- so repeat retires rather than
-  // carrying over and looping whatever lands next, which nobody asked it to do.
+  // Moving on by hand DEMOTES repeat-one to repeat-list. It does not switch
+  // repeat off, which is what it used to do and what reads as the button
+  // turning itself off for no stated reason.
   //
-  // Deliberately wrapped around the BUTTONS and not inside shNext(): the timer
-  // and the ENDED handler both reach shNext too, and clearing it there would
-  // mean repeat switched itself off the moment it was supposed to act. It can
-  // only be reached by a real press anyway -- with repeat on, shAdvance() routes
-  // to shReplay() instead -- but binding it here makes that independent of how
-  // shAdvance is written later. Reshuffle also calls shNext and keeps repeat,
-  // which is right: starting a fresh run is not moving on from a song.
+  // The step down is the honest reading of the gesture. Pressing Next says
+  // "not this performance again" -- which repeat-one is the only mode to
+  // promise -- but it says nothing about wanting the list to stop looping, and
+  // that is the weaker promise sitting directly underneath. Off is a bigger
+  // change than the press asked for.
+  //
+  // Only a real MOVE demotes, which is why the return value is tested. Prev
+  // restarting the current performance must not, or repeat-one would be
+  // cancelled by the very gesture people use to hear something again.
+  //
+  // Deliberately wrapped around the BUTTONS rather than put inside shNext():
+  // the watchdog and the ENDED handler reach shNext too, and demoting there
+  // would drop the mode at the exact moment it was supposed to act.
   function shManual(fn){
     return function(){
-      // Only a real move retires repeat. Prev restarting the current
-      // performance must NOT, or repeat would be cancelled by the very gesture
-      // people use to hear something again.
-      // Only repeat-ONE retires. Pressing Next is a decision to move on from
-      // THIS performance, which is the opposite of what repeat-one asks for --
-      // but it says nothing about wanting the list to stop looping, and
-      // clearing that too would make the mode impossible to use with the
-      // transport.
       if (fn() && shRep === "one"){
-        shRep = "";
-        try{ sessionStorage.setItem("songlist-repeat-mode", ""); }catch(e){}
+        shRep = "list";
+        try{ sessionStorage.setItem("songlist-repeat-mode", shRep); }catch(e){}
       }
       shPaintState();
     };
