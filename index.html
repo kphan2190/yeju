@@ -1457,15 +1457,23 @@ guard("playopt", function(){
     shPaintNav();
     shCount();
   }
-  function shCount(n, pos){
+  // How big the pool is, and nothing else. There WAS a position prefix -- "700
+  // of 1015 performances" -- and it was removed because it is only true if you
+  // press Next and nothing else. The order is a one-time shuffle, so tapping a
+  // row in the list jumps shPos to that entry's index and the line then reads
+  // like a count of what you have heard when it is a coordinate in an
+  // arbitrary order. Prev and Reshuffle break it the same way.
+  //
+  // No `pos` parameter, deliberately: leaving one would invite putting the
+  // prefix back. What is playing is on the now-playing block, and how far into
+  // it you are is on the scrub bar; neither needs this line.
+  function shCount(n){
     var el = shBy("shcount");
     if (!el) return;
     if (n === undefined) n = shOrder.length;
-    if (pos === undefined) pos = shPos;
     var t = shq ? shq.value.trim() : "";
-    var at = (pos >= 0 && pos < n) ? ((pos + 1) + " of ") : "";
     el.textContent = n
-      ? (at + n + (n === 1 ? " performance" : " performances") +
+      ? (n + (n === 1 ? " performance" : " performances") +
          (t ? (" matching " + String.fromCharCode(8220) + t +
                String.fromCharCode(8221)) : ""))
       : "Nothing matches that.";
@@ -2174,7 +2182,7 @@ guard("playopt", function(){
     // would fire loadVideoById, which is the expensive path and the one with
     // known flakiness. The count updates immediately so the box still feels
     // live while the order waits for you to stop typing.
-    shCount(shPool().length, -1);
+    shCount(shPool().length);
     // Immediately, not on the debounce: the debounce exists because rebuilding
     // the ORDER starts a video, and filtering the table costs nothing.
     if (shListOpen) shSyncTable();
