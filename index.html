@@ -96,6 +96,20 @@
      handler. A tap then needs no JavaScript at all, cannot be popup-blocked,
      and long-press gives the usual menu. The expander sits above it. */
   tr.s{cursor:pointer;position:relative}
+  /* The overlay's containing block is the CELL, not the row, and that is a
+     WebKit fix rather than a preference. `tr.s` is position:relative and Blink
+     honours it, so on a desktop the link sized to its row -- but WebKit has
+     never supported position:relative on a `tr`. There the row stops being a
+     containing block, the link escapes to the nearest positioned ancestor and
+     stretches across the page at z-index 1, and every tap on the document
+     lands on ONE link.
+     Reported from an iPad: every song played the same performance, Play
+     Options would not change, and the theme button appeared dead -- none of
+     them were broken, the taps never reached them. An iPhone was fine because
+     under 620px the table is display:block, and a block does honour relative.
+     So it only bites where table layout and WebKit meet: iPad, and a phone in
+     desktop-site mode. */
+  td.artist{position:relative}
   .rowlink{position:absolute;top:0;left:0;right:0;bottom:0;z-index:1}
   td.x{z-index:2}
   #oops{display:none;background:#7f1d1d;color:#fff;padding:8px 12px;
@@ -1299,9 +1313,15 @@ guard("playopt", function(){
   // long-press still offers "Open in YouTube" in both modes.
   document.addEventListener("click", function(ev){
     if (mode !== "here" && mode !== "shuffle") return;
+    // Anchor first, then the ROW. Confining the overlay to one cell would
+    // otherwise have shrunk the tap target to the artist column; resolving the
+    // row from `data-href` keeps a click anywhere in it playing that row, and
+    // does it without depending on a positioned `tr` at all.
     var a = ev.target.closest && ev.target.closest("a[href]");
-    if (!a) return;
-    var href = a.getAttribute("href") || "", v = vidOf(href);
+    var trow = ev.target.closest && ev.target.closest("tr.s");
+    var href = a ? (a.getAttribute("href") || "")
+                 : (trow ? (trow.getAttribute("data-href") || "") : "");
+    var v = vidOf(href);
     if (!v) return;
     ev.preventDefault();
     // In shuffle the list is a way to PICK, so a tap moves the queue to that
